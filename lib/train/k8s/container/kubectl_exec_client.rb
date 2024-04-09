@@ -83,7 +83,7 @@ module Train
         end
 
         def sh_run_command(command)
-          %W{/bin/sh -c "#{command}"}
+          %W{/bin/sh -c "#{command}"}.join("\s")
         end
       end
     end
