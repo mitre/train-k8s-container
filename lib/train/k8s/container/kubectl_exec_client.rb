@@ -9,6 +9,7 @@ module Train
         attr_reader :pod, :container_name, :namespace
 
         DEFAULT_NAMESPACE = "default".freeze
+        @@session = nil
 
         def initialize(pod:, namespace: nil, container_name: nil)
           @pod = pod
@@ -25,7 +26,9 @@ module Train
 
         private
 
-        attr_reader :session
+        def session
+          @@session
+        end
 
         def ensure_session_open
           start_session unless session && !session.closed?
@@ -57,9 +60,9 @@ module Train
         end
 
         def start_session
-          @session = IO.popen(exec_command, "r+")
+          @@session = IO.popen(exec_command, "r+")
           # TODO: check if kubectl connection is established
-          raise "Failed to open connection" unless @session
+          raise "Failed to open connection" unless @@session
         end
 
         def exec_command
