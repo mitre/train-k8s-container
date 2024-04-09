@@ -35,7 +35,12 @@ module Train
         end
 
         def stream(command)
-          session.puts("#{command}; echo KUBECTL_EXEC_STATUS:$?; echo KUBECTL_EXEC_DONE")
+          instruction = [].tap do |com|
+            com << sh_run_command(command)
+            com << sh_run_command("echo KUBECTL_EXEC_STATUS:$?")
+            com << sh_run_command("echo KUBECTL_EXEC_DONE")
+          end.join(";\s")
+          session.puts(instruction)
           output = ""
           exit_status = nil
           while (line = session.gets)
