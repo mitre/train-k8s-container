@@ -34,26 +34,42 @@ module Train
           text.gsub(/\e\[.*?m/, "").gsub(/\e\]0;.*?\a/, "").gsub(/\e\[A/, "").gsub(/\e\[C/, "").gsub(/\e\[K/, "")
         end
 
-        def stream(command)
-          instruction = [].tap do |com|
-            com << sh_run_command(command)
-            com << sh_run_command("echo KUBECTL_EXEC_STATUS:$?")
-            com << sh_run_command("echo KUBECTL_EXEC_DONE")
-          end.join(";\s")
-          session.puts(instruction)
-          output = ""
-          exit_status = nil
-          while (line = session.gets)
-            if line.start_with?("KUBECTL_EXEC_STATUS:")
-              exit_status = line.chomp.split(":")[1].to_i
-            elsif line.chomp == "KUBECTL_EXEC_DONE"
-              break
-            else
-              output += line
+        def send_command(command)
+          @writer.puts("#{command} 2>&1 ; echo EXIT_CODE=$?")
+          @writer.flush
+
+          stdout = ""
+          stderr = ""
+          status = nil
+          buffer = ""
+
+          begin
+            while (line = @reader.gets)
+              buffer << line
+              if line =~ /EXIT_CODE=(\d+)/
+                status = $1.to_i
+                break
+              end
             end
+          rescue Errno::EIO
           end
-          if exit_status.nil?
-            puts "Error: Failed to retrieve exit status."
+
+          # Clean up the buffer by removing ANSI escape sequences
+          buffer = strip_ansi_sequences(buffer)
+          # Process the buffer to remove the command echo and the EXIT_CODE
+          stdout_lines = buffer.lines
+          # TODO: there is a known bug with this approach and that is if an executable that is not found in the
+          # environment is tried and executed, then it will remove not be present in the STDERR, because the following
+          # line filters that exact command as well for example,
+          # for the command 'foo'
+          # `["bash: foo: command not found\r\n"].reject! { |l| l =~ /#{Regexp.escape('foo')}/ }` returns an empty []
+          stdout_lines.reject! { |l| l =~ /#{Regexp.escape(command)}/ }
+          stdout_lines.reject! { |l| l =~ /EXIT_CODE=/ }
+
+          # Separate stdout and stderr
+          if status != 0
+            stderr = stdout_lines.join.strip
+            stdout = ""
           else
             stdout, stderr = if exit_status == 0
                                [output, ""]
