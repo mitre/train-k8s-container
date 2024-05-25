@@ -70,27 +70,18 @@ module Train
           raise "Failed to open connection" unless @@session
         end
 
-        def exec_command
-          ["kubectl exec"].tap do |arr|
-            arr << "--stdin"
-            arr << pod if pod
-            if namespace
-              arr << "-n"
-              arr << namespace
-            end
-            if container_name
-              arr << "-c"
-              arr << container_name
-            end
-            arr << "--"
-            arr << "/bin/sh"
-          end.join("\s")
+        def execute(command)
+          send_command(command)
+        rescue => e
+          reconnect
+          Train::Extras::CommandResult.new("", e.message, 1)
         end
 
-        def sh_run_command(command)
-          %W{/bin/sh -c "#{command}"}.join("\s")
+        def close
+          disconnect
         end
       end
     end
   end
 end
+
