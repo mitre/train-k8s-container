@@ -9,15 +9,38 @@ module Train
   module K8s
     module Container
       class KubectlExecClient
-        attr_reader :pod, :container_name, :namespace
+        attr_reader :pod, :container_name, :namespace, :reader, :writer, :pid
 
         DEFAULT_NAMESPACE = "default".freeze
-        @@session = nil
+        @@session = {}
 
         def initialize(pod:, namespace: nil, container_name: nil)
           @pod = pod
           @container_name = container_name
           @namespace = namespace
+          if @@session.empty?
+            @reader = nil
+            @writer = nil
+            @pid = nil
+            connect
+          end
+        end
+
+        def connect
+          @reader, @writer, @pid = PTY.spawn("kubectl exec --stdin --tty #{@pod} -n #{@namespace} -c #{@container_name} -- /bin/bash")
+          @writer.sync = true
+          @@session[:reader] = @reader
+          @@session[:writer] = @writer
+          @@session[:pid] = @pid
+        rescue StandardError => e
+          puts "Error connecting: #{e.message}"
+          sleep 1
+          retry
+        end
+
+        def reconnect
+          disconnect
+          connect
         end
 
         def disconnect
