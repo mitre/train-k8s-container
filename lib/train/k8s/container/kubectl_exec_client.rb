@@ -1,6 +1,9 @@
 require "mixlib/shellout" unless defined?(Mixlib::ShellOut)
 require "train/options" # only to load the following requirement `train/extras`
 require "train/extras"
+require "open3"
+require "pty"
+require "expect"
 
 module Train
   module K8s
