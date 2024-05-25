@@ -71,19 +71,10 @@ module Train
             stderr = stdout_lines.join.strip
             stdout = ""
           else
-            stdout, stderr = if exit_status == 0
-                               [output, ""]
-                             else
-                               ["", output]
-                             end
+            stdout = stdout_lines.join.strip
           end
-          Train::Extras::CommandResult.new(stdout, stderr, exit_status)
-        end
 
-        def start_session
-          @@session = IO.popen(exec_command, "r+")
-          # TODO: check if kubectl connection is established
-          raise "Failed to open connection" unless @@session
+          Train::Extras::CommandResult.new(stdout, stderr, status)
         end
 
         def execute(command)
