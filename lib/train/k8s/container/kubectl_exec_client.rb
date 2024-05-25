@@ -30,14 +30,8 @@ module Train
           Train::Extras::CommandResult.new("", "", 1)
         end
 
-        private
-
-        def session
-          @@session
-        end
-
-        def ensure_session_open
-          start_session unless session && !session.closed?
+        def strip_ansi_sequences(text)
+          text.gsub(/\e\[.*?m/, "").gsub(/\e\]0;.*?\a/, "").gsub(/\e\[A/, "").gsub(/\e\[C/, "").gsub(/\e\[K/, "")
         end
 
         def stream(command)
