@@ -20,10 +20,13 @@ module Train
           @namespace = namespace
         end
 
-        def execute(command)
-          ensure_session_open
-          stream(command)
-        rescue Errno::ENOENT => _e
+        def disconnect
+          @writer.puts "exit" if @writer
+          [@reader, @writer].each do |io|
+            io.close if io && !io.closed?
+          end
+          @@session = {}
+        rescue IOError
           Train::Extras::CommandResult.new("", "", 1)
         end
 
