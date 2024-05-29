@@ -72,6 +72,9 @@ module Train
               if line =~ /EXIT_CODE=(\d+)/
                 status = $1.to_i
                 break
+              elsif line =~ /bash: syntax error/
+                status = 2
+                break
               end
             end
           rescue Errno::EIO => e
