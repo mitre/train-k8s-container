@@ -75,7 +75,8 @@ module Train
                 break
               end
             end
-          rescue Errno::EIO
+          rescue Errno::EIO => e
+            raise StandardError, e.message
           end
 
           # Clean up the buffer by removing ANSI escape sequences
