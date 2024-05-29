@@ -18,12 +18,11 @@ module Train
           @pod = pod
           @container_name = container_name
           @namespace = namespace
-          if @@session.empty?
-            @reader = nil
-            @writer = nil
-            @pid = nil
-            connect
-          end
+
+          @reader = @@session[:reader] || nil
+          @writer = @@session[:writer] || nil
+          @pid = @@session[:pid] || nil
+          connect if @@session.empty?
         end
 
         def connect
