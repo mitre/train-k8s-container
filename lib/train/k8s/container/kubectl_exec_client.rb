@@ -58,7 +58,8 @@ module Train
         end
 
         def send_command(command)
-          @writer.puts("#{command} 2>&1 ; echo EXIT_CODE=$?")
+          cmd_string = "#{command} 2>&1 ; echo EXIT_CODE=$?"
+          @writer.puts(cmd_string)
           @writer.flush
 
           stdout = ""
@@ -102,7 +103,7 @@ module Train
 
         def execute(command)
           send_command(command)
-        rescue => e
+        rescue StandardError => e
           reconnect
           Train::Extras::CommandResult.new("", e.message, 1)
         end
