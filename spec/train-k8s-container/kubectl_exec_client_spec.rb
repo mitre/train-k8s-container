@@ -65,4 +65,24 @@ RSpec.describe TrainPlugins::K8sContainer::KubectlExecClient do
       end
     end
   end
+
+  describe '#execute_raw' do
+    it 'properly escapes commands with shell operators' do
+      client = described_class.new(pod: 'test', namespace: 'default', container_name: 'test')
+      instruction = client.send(:build_raw_instruction, 'test -x /bin/bash && echo OK')
+
+      # Shellwords.escape will escape spaces and special chars
+      expect(instruction).to include('test\\ -x\\ /bin/bash\\ \\&\\&\\ echo\\ OK')
+      expect(instruction).to include('-- /bin/sh -c')
+    end
+
+    it 'handles commands with pipes' do
+      client = described_class.new(pod: 'test', namespace: 'default', container_name: 'test')
+      instruction = client.send(:build_raw_instruction, 'cat file | grep test')
+
+      # Should escape the pipe
+      expect(instruction).to include('\\|')
+      expect(instruction).to include('-- /bin/sh -c')
+    end
+  end
 end
