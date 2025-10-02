@@ -3,11 +3,12 @@
 Gemfile.lock
 
 .byebug_history
+.rspec_status
 
 .ruby-version
 .ruby-gemset
 
-# Claude Code and internal planning documents (keep local only)
+# Internal planning documents (keep local only)
 CLAUDE.md
 .claude/
 .context-trigger
