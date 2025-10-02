@@ -18,8 +18,6 @@ module TrainPlugins
       def initialize(options)
         super
 
-        raise 'Unsupported host platform.' if RUBY_PLATFORM =~ /windows|mswin|msys|mingw|cygwin/
-
         uri_path = options[:path]&.gsub(%r{^/}, '')
         @pod = options[:pod] || uri_path&.split('/')&.first
         @container_name = options[:container_name] || uri_path&.split('/')&.last
