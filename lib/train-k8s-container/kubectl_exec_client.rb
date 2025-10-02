@@ -118,7 +118,7 @@ module TrainPlugins
 
       def base_kubectl_command
         [
-          @kubectl_path, 'exec', '--stdin', '--tty',
+          @kubectl_path, 'exec', '--stdin',
           @pod, '-n', @namespace, '-c', @container_name
         ].join(' ')
       end

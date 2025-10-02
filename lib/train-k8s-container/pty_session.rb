@@ -33,16 +33,14 @@ module TrainPlugins
       def connect
         raise SessionClosedError, 'Session already connected' if connected?
 
-        @logger&.debug("Opening PTY session for #{@session_key} with #{@shell}")
+        @logger&.debug("Opening persistent session for #{@session_key} with #{@shell}")
         @reader, @writer, @pid = PTY.spawn("#{@kubectl_cmd} -- #{@shell}")
         @writer.sync = true
 
-        # Wait for shell prompt (with timeout)
-        Timeout.timeout(5) do
-          @reader.gets
-        end
+        # Wait briefly for shell to be ready (no prompt expected without --tty)
+        sleep(0.1)
 
-        @logger&.debug("PTY session established (PID: #{@pid})")
+        @logger&.debug("Persistent session established (PID: #{@pid})")
         true
       rescue StandardError => e
         cleanup
@@ -107,7 +105,7 @@ module TrainPlugins
       private
 
       def read_until_marker
-        buffer = ''
+        buffer = +'' # Unfreeze string
 
         Timeout.timeout(@command_timeout) do
           while (line = @reader.gets)
@@ -130,12 +128,13 @@ module TrainPlugins
         end
 
         # Remove exit code line
-        cleaned = cleaned.gsub(/__EXIT_CODE__=\d+\s*$/, '')
+        cleaned = cleaned.gsub(/__EXIT_CODE__=\d+.*$/, '')
 
         # Split into lines and remove command echo
         lines = cleaned.lines
-        # Only remove exact command match to avoid losing error messages
-        lines.reject! { |l| l.strip == command.strip }
+        # Remove command wrapper echo (exact match)
+        cmd_wrapper = "#{command} 2>&1 ; echo __EXIT_CODE__=$?"
+        lines.reject! { |l| l.strip == cmd_wrapper.strip || l.strip == command.strip }
 
         output = lines.join
 
