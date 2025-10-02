@@ -6,7 +6,7 @@ $LOAD_PATH.unshift File.expand_path('../../lib', __dir__)
 
 require 'train-k8s-container'
 
-def test_container(pod:, container:, namespace: 'default', description:)
+def test_container(pod:, container:, description:, namespace: 'default')
   puts "=== #{description} ==="
   conn = TrainPlugins::K8sContainer::Connection.new(
     pod: pod,
@@ -46,7 +46,7 @@ end
 # Enable debug logging if desired
 # ENV['TRAIN_K8S_LOG_LEVEL'] = 'DEBUG'
 
-puts "Train-k8s-container Live Testing"
+puts 'Train-k8s-container Live Testing'
 puts "Version: #{TrainPlugins::K8sContainer::VERSION}"
 puts
 
@@ -62,9 +62,9 @@ test_container(
   description: 'Alpine Container (ash/sh)'
 )
 
-puts "=== SUMMARY ==="
-puts "✅ All live tests completed successfully!"
-puts "✅ Shell detection working (bash, sh/ash)"
-puts "✅ Command execution working"
-puts "✅ File operations working"
-puts "✅ Platform detection working (cloud+unix families)"
+puts '=== SUMMARY ==='
+puts '✅ All live tests completed successfully!'
+puts '✅ Shell detection working (bash, sh/ash)'
+puts '✅ Command execution working'
+puts '✅ File operations working'
+puts '✅ Platform detection working (cloud+unix families)'
