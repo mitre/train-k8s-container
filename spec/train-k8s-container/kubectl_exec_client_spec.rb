@@ -155,7 +155,7 @@ RSpec.describe TrainPlugins::K8sContainer::KubectlExecClient do
         client_pty = described_class.new(pod: 'test', namespace: 'default', container_name: 'test', use_pty: true)
 
         # Mock SessionManager to raise PTY error
-        mock_session = instance_double(TrainPlugins::K8sContainer::PtySession)
+        instance_double(TrainPlugins::K8sContainer::PtySession)
         allow(TrainPlugins::K8sContainer::SessionManager.instance).to receive(:get_session)
           .and_raise(TrainPlugins::K8sContainer::PtySession::PtyError.new('PTY failed'))
 
