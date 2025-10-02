@@ -6,6 +6,7 @@ require 'train/extras'
 
 module TrainPlugins
   module K8sContainer
+    # Kubectl exec client for executing commands in Kubernetes containers
     class KubectlExecClient
       attr_reader :pod, :container_name, :namespace
 
@@ -47,7 +48,7 @@ module TrainPlugins
       end
 
       def sh_run_command(command)
-        %W[/bin/sh -c "#{command}"]
+        ['/bin/sh', '-c', command]
       end
     end
   end

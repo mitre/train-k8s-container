@@ -5,6 +5,7 @@ require 'train/plugins'
 
 module TrainPlugins
   module K8sContainer
+    # Train transport for connecting to Kubernetes containers via kubectl exec
     class Transport < Train.plugin(1)
       require_relative 'connection'
 
@@ -15,14 +16,14 @@ module TrainPlugins
       option :container_name, default: nil
       option :namespace, default: nil
 
-      def connection(state = nil, &block)
+      def connection(state = nil, &)
         opts = merge_options(@options, state || {})
-        create_new_connection(opts, &block)
+        create_new_connection(opts, &)
       end
 
-      def create_new_connection(options, &block)
+      def create_new_connection(options, &)
         @connection_options = options
-        @connection = Connection.new(options, &block)
+        @connection = Connection.new(options, &)
       end
     end
   end

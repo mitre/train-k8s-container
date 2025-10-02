@@ -5,6 +5,8 @@ require 'train/plugins'
 require 'train/file/remote/linux'
 module TrainPlugins
   module K8sContainer
+    # Connection class for Kubernetes container transport
+    # Executes commands inside containers via kubectl exec
     class Connection < Train::Plugins::Transport::BaseConnection
       include Train::Platforms::Common
 
@@ -12,7 +14,7 @@ module TrainPlugins
       # @example k8s-container://default/shell-demo/nginx
 
       def initialize(options)
-        super(options)
+        super
 
         raise 'Unsupported host platform.' if RUBY_PLATFORM =~ /windows|mswin|msys|mingw|cygwin/
 
@@ -48,7 +50,7 @@ module TrainPlugins
         )
       end
 
-      def run_command_via_connection(cmd, &_data_handler)
+      def run_command_via_connection(cmd, &)
         kubectl_client.execute(cmd)
       end
 
