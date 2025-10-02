@@ -1,0 +1,34 @@
+AllCops:
+  TargetRubyVersion: 3.3
+  NewCops: enable
+  SuggestExtensions: false
+  Exclude:
+    - vendor/**/*
+
+# Naming/FileName - train-k8s-container.rb is correct gem convention
+Naming/FileName:
+  Enabled: false
+
+# TODO Track 2: Re-enable after refactoring with shell detection
+# These will be addressed when we refactor kubectl_exec_client and connection
+# for shell detection and improved error handling
+Metrics/AbcSize:
+  Enabled: false  # TODO: Re-enable in Track 2
+
+Metrics/CyclomaticComplexity:
+  Enabled: false  # TODO: Re-enable in Track 2
+
+Metrics/PerceivedComplexity:
+  Enabled: false  # TODO: Re-enable in Track 2
+
+Metrics/MethodLength:
+  Enabled: false  # TODO: Re-enable in Track 2
+
+# RSpec tests will have longer blocks - acceptable
+Metrics/BlockLength:
+  Exclude:
+    - spec/**/*_spec.rb
+
+# Allow reasonable line length (Chef standard is 150)
+Layout/LineLength:
+  Max: 150
