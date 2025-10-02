@@ -6,17 +6,19 @@ require 'logger'
 require 'train/options'
 require 'train/extras'
 require_relative 'retry_handler'
+require_relative 'session_manager'
 
 module TrainPlugins
   module K8sContainer
     # Kubectl exec client for executing commands in Kubernetes containers
+    # Supports both one-off execution (Mixlib::ShellOut) and persistent sessions (PTY)
     class KubectlExecClient
       attr_reader :pod, :container_name, :namespace
 
       DEFAULT_NAMESPACE = 'default'
       DEFAULT_TIMEOUT = 60
 
-      def initialize(pod:, namespace: nil, container_name: nil, kubectl_path: 'kubectl', timeout: DEFAULT_TIMEOUT, logger: nil)
+      def initialize(pod:, namespace: nil, container_name: nil, kubectl_path: 'kubectl', timeout: DEFAULT_TIMEOUT, logger: nil, use_pty: false)
         @pod = pod
         @container_name = container_name
         @namespace = namespace
@@ -24,22 +26,17 @@ module TrainPlugins
         @timeout = timeout
         @logger = logger || default_logger
         @shell_detector = nil # Will be created lazily
+        @use_pty = use_pty || ENV['TRAIN_K8S_PTY_MODE'] == 'true'
+        @pty_fallback_disabled = false
       end
 
       def execute(command, opts = {})
         @logger.debug("Executing command in #{@namespace}/#{@pod}/#{@container_name}: #{command}")
 
-        RetryHandler.with_retry(max_retries: opts[:max_retries] || 3, logger: @logger) do
-          shell = detect_shell
-
-          result = if shell
-                     execute_with_shell(shell, command, opts)
-                   else
-                     execute_without_shell(command, opts)
-                   end
-
-          validate_result(result, command)
-          sanitize_result(result)
+        if @use_pty && pty_available? && !@pty_fallback_disabled
+          execute_via_pty(command, opts)
+        else
+          execute_via_shellout(command, opts)
         end
       rescue Errno::ENOENT => e
         @logger.error("kubectl not found at '#{@kubectl_path}': #{e.message}")
@@ -60,6 +57,71 @@ module TrainPlugins
       end
 
       private
+
+      def pty_available?
+        # PTY only works on Unix-like operating systems
+        !RUBY_PLATFORM.match?(/windows|mswin|msys|mingw|cygwin/)
+      end
+
+      def execute_via_pty(command, opts)
+        @logger.debug('Using PTY session for execution')
+        shell = detect_shell
+        raise ShellNotAvailableError, 'No shell available for PTY mode' unless shell
+
+        session = SessionManager.instance.get_session(
+          session_key,
+          kubectl_cmd: base_kubectl_command,
+          shell: shell,
+          timeout: opts[:timeout] || @timeout,
+          logger: @logger
+        )
+
+        session.execute(command)
+      rescue PtySession::SessionClosedError => e
+        # Try reconnecting once
+        @logger.warn("PTY session closed: #{e.message}, attempting reconnect")
+        SessionManager.instance.cleanup_session(session_key)
+        session = SessionManager.instance.get_session(
+          session_key,
+          kubectl_cmd: base_kubectl_command,
+          shell: shell,
+          timeout: opts[:timeout] || @timeout,
+          logger: @logger
+        )
+        session.execute(command)
+      rescue PtySession::PtyError, ShellNotAvailableError => e
+        @logger.error("PTY execution failed: #{e.message}, falling back to one-off execution")
+        @pty_fallback_disabled = true
+        execute_via_shellout(command, opts)
+      end
+
+      def execute_via_shellout(command, opts)
+        @logger.debug('Using one-off execution (Mixlib::ShellOut)')
+
+        RetryHandler.with_retry(max_retries: opts[:max_retries] || 3, logger: @logger) do
+          shell = detect_shell
+
+          result = if shell
+                     execute_with_shell(shell, command, opts)
+                   else
+                     execute_without_shell(command, opts)
+                   end
+
+          validate_result(result, command)
+          sanitize_result(result)
+        end
+      end
+
+      def session_key
+        "#{@namespace}/#{@pod}/#{@container_name}"
+      end
+
+      def base_kubectl_command
+        [
+          @kubectl_path, 'exec', '--stdin', '--tty',
+          @pod, '-n', @namespace, '-c', @container_name
+        ].join(' ')
+      end
 
       def detect_shell
         require_relative 'shell_detector' unless defined?(ShellDetector)

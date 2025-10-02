@@ -85,4 +85,92 @@ RSpec.describe TrainPlugins::K8sContainer::KubectlExecClient do
       expect(instruction).to include('-- /bin/sh -c')
     end
   end
+
+  describe 'PTY mode selection' do
+    describe '#pty_available?' do
+      it 'returns true on Unix platforms' do
+        skip 'Running on Windows' if RUBY_PLATFORM.match?(/windows|mswin|msys|mingw|cygwin/)
+
+        client = described_class.new(pod: 'test', namespace: 'default', container_name: 'test')
+        expect(client.send(:pty_available?)).to be true
+      end
+
+      it 'returns false on Windows platforms' do
+        skip 'Not on Windows' unless RUBY_PLATFORM.match?(/windows|mswin|msys|mingw|cygwin/)
+
+        client = described_class.new(pod: 'test', namespace: 'default', container_name: 'test')
+        expect(client.send(:pty_available?)).to be false
+      end
+    end
+
+    describe 'execution path selection' do
+      let(:client) { described_class.new(pod: 'test', namespace: 'default', container_name: 'test') }
+
+      before do
+        allow(client).to receive(:execute_via_shellout).and_return(
+          Train::Extras::CommandResult.new('output', '', 0)
+        )
+        allow(client).to receive(:execute_via_pty).and_return(
+          Train::Extras::CommandResult.new('output', '', 0)
+        )
+      end
+
+      it 'uses shellout by default (PTY disabled)' do
+        client.execute('test')
+        expect(client).to have_received(:execute_via_shellout)
+        expect(client).not_to have_received(:execute_via_pty)
+      end
+
+      it 'uses shellout when PTY unavailable on Windows' do
+        skip 'Not on Windows' unless RUBY_PLATFORM.match?(/windows|mswin|msys|mingw|cygwin/)
+
+        client_pty = described_class.new(pod: 'test', namespace: 'default', container_name: 'test', use_pty: true)
+        allow(client_pty).to receive(:execute_via_shellout).and_return(
+          Train::Extras::CommandResult.new('output', '', 0)
+        )
+
+        client_pty.execute('test')
+        expect(client_pty).to have_received(:execute_via_shellout)
+      end
+
+      it 'uses PTY when enabled and available' do
+        skip 'Running on Windows' if RUBY_PLATFORM.match?(/windows|mswin|msys|mingw|cygwin/)
+
+        client_pty = described_class.new(pod: 'test', namespace: 'default', container_name: 'test', use_pty: true)
+        allow(client_pty).to receive(:execute_via_pty).and_return(
+          Train::Extras::CommandResult.new('output', '', 0)
+        )
+        allow(client_pty).to receive(:execute_via_shellout)
+
+        client_pty.execute('test')
+        expect(client_pty).to have_received(:execute_via_pty)
+        expect(client_pty).not_to have_received(:execute_via_shellout)
+      end
+    end
+
+    describe 'PTY fallback' do
+      it 'disables PTY after persistent errors' do
+        skip 'Running on Windows' if RUBY_PLATFORM.match?(/windows|mswin|msys|mingw|cygwin/)
+
+        client_pty = described_class.new(pod: 'test', namespace: 'default', container_name: 'test', use_pty: true)
+
+        # Mock SessionManager to raise PTY error
+        mock_session = instance_double(TrainPlugins::K8sContainer::PtySession)
+        allow(TrainPlugins::K8sContainer::SessionManager.instance).to receive(:get_session)
+          .and_raise(TrainPlugins::K8sContainer::PtySession::PtyError.new('PTY failed'))
+
+        # Mock successful shellout fallback
+        allow(client_pty).to receive(:execute_via_shellout).and_call_original
+        allow(Mixlib::ShellOut).to receive(:new).and_return(shell)
+        allow(shell).to receive(:run_command).and_return(shell_op.new('output', '', 0))
+
+        # First call should catch PTY error and fallback
+        result = client_pty.execute('test')
+        expect(result.stdout).to eq('output')
+
+        # Verify PTY fallback is now disabled
+        expect(client_pty.instance_variable_get(:@pty_fallback_disabled)).to be true
+      end
+    end
+  end
 end
