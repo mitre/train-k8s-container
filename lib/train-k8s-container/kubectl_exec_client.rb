@@ -129,7 +129,7 @@ module TrainPlugins
 
       def command_should_produce_output?(command)
         # Commands that typically don't produce output
-        !command.match?(/^(true|false|touch|mkdir|rm|sleep)\b/)
+        !command.match?(/^(true|false|touch|mkdir|rm|sleep|test)\b/)
       end
 
       def sanitize_result(result)
