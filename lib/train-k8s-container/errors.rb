@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'train'
+
 module TrainPlugins
   module K8sContainer
     # Base error class for k8s-container transport

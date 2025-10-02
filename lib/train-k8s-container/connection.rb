@@ -3,12 +3,14 @@
 require 'train'
 require 'train/plugins'
 require 'train/file/remote/linux'
+require_relative 'platform'
+
 module TrainPlugins
   module K8sContainer
     # Connection class for Kubernetes container transport
     # Executes commands inside containers via kubectl exec
     class Connection < Train::Plugins::Transport::BaseConnection
-      include Train::Platforms::Common
+      include TrainPlugins::K8sContainer::Platform
 
       # URI format: k8s-container://<namespace>/<pod>/<container_name>
       # @example k8s-container://default/shell-demo/nginx
@@ -32,10 +34,6 @@ module TrainPlugins
 
       def unique_identifier
         "#{@namespace}/#{@pod}/#{@container_name}"
-      end
-
-      def platform
-        @platform ||= Train::Platforms::Detect.scan(self)
       end
 
       private

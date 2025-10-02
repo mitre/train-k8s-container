@@ -107,7 +107,7 @@ module TrainPlugins
         [
           @kubectl_path, 'exec', '--stdin',
           @pod, '-n', @namespace, '-c', @container_name,
-          '--', '/bin/sh', '-c', command
+          '--', '/bin/sh', '-c', Shellwords.escape(command)
         ].join(' ')
       end
 
