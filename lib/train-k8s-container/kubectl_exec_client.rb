@@ -44,7 +44,7 @@ module TrainPlugins
       rescue Errno::ENOENT => e
         @logger.error("kubectl not found at '#{@kubectl_path}': #{e.message}")
         raise KubectlNotFoundError, "kubectl not found at '#{@kubectl_path}'"
-      rescue Mixlib::ShellOut::CommandTimeout => e
+      rescue Mixlib::ShellOut::CommandTimeout
         @logger.error("Command timed out after #{opts[:timeout] || @timeout}s: #{command}")
         raise Train::CommandTimeoutReached, "Command timed out: #{command}"
       end
@@ -147,8 +147,8 @@ module TrainPlugins
         # Remove ANSI escape sequences
         output.gsub(/\e\[([;\d]+)?[A-Za-z]/, '')
               .gsub(/\e\][^\a]*\a/, '')
-              .gsub(/\r\n/, "\n")
-              .gsub(/\r/, "\n")
+              .gsub("\r\n", "\n")
+              .gsub("\r", "\n")
       end
 
       def parse_actual_exit_code(stderr)

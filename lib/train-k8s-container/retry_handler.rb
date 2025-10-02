@@ -12,7 +12,7 @@ module TrainPlugins
       class NetworkError < K8sContainerError; end
       class ConnectionError < K8sContainerError; end
 
-      def self.with_retry(max_retries: MAX_RETRIES, logger: nil, &block)
+      def self.with_retry(max_retries: MAX_RETRIES, logger: nil)
         retries = 0
 
         begin
