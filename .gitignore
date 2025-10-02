@@ -6,3 +6,15 @@ Gemfile.lock
 
 .ruby-version
 .ruby-gemset
+
+# Claude Code and internal planning documents (keep local only)
+CLAUDE.md
+.claude/
+.context-trigger
+CONTEXT-RECOVERY.md
+*RESEARCH*.md
+*MODERNIZATION*.md
+*ANALYSIS*.md
+session.md
+recovery-prompt.md
+pr-summary.md
