@@ -96,7 +96,7 @@ jobs:
         run: bundle install
 
       - name: Test plugin with real pods (Direct Ruby)
-        run: ruby test/scripts/test_live.rb
+        run: bundle exec ruby test/scripts/test_live.rb
         env:
           KUBECONFIG: /home/runner/.kube/config
 
