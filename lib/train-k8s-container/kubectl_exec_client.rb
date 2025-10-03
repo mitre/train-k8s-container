@@ -131,10 +131,18 @@ module TrainPlugins
       end
 
       def execute_with_shell(shell_path, command, opts)
-        instruction = build_shell_instruction(shell_path, command)
+        instruction = if windows_shell?(shell_path)
+                        build_windows_instruction(shell_path, command)
+                      else
+                        build_shell_instruction(shell_path, command)
+                      end
         shell = Mixlib::ShellOut.new(instruction, timeout: opts[:timeout] || @timeout)
         res = shell.run_command
         Train::Extras::CommandResult.new(res.stdout, res.stderr, res.exitstatus)
+      end
+
+      def windows_shell?(shell_path)
+        shell_path.end_with?('.exe')
       end
 
       def execute_without_shell(command, opts)
@@ -156,6 +164,29 @@ module TrainPlugins
           @pod, '-n', @namespace, '-c', @container_name,
           '--', shell_path, '-c', Shellwords.escape(command)
         ].join(' ')
+      end
+
+      def build_windows_instruction(shell_path, command)
+        # Windows shells use different syntax
+        case shell_path
+        when 'cmd.exe'
+          # cmd.exe uses /c flag
+          [
+            @kubectl_path, 'exec', '--stdin',
+            @pod, '-n', @namespace, '-c', @container_name,
+            '--', 'cmd.exe', '/c', Shellwords.escape(command)
+          ].join(' ')
+        when 'powershell.exe', 'pwsh.exe'
+          # PowerShell uses -Command flag
+          [
+            @kubectl_path, 'exec', '--stdin',
+            @pod, '-n', @namespace, '-c', @container_name,
+            '--', shell_path, '-Command', Shellwords.escape(command)
+          ].join(' ')
+        else
+          # Fallback to Unix-style (shouldn't happen)
+          build_shell_instruction(shell_path, command)
+        end
       end
 
       def build_direct_instruction(command)
