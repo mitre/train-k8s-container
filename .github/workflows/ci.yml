@@ -102,8 +102,14 @@ jobs:
         with:
           project: inspec
 
+      - name: Build and install plugin
+        run: |
+          gem build train-k8s-container.gemspec
+          inspec plugin install train-k8s-container-*.gem
+
       - name: Test with InSpec
         run: |
+          inspec plugin list
           inspec detect -t k8s-container:///test-ubuntu/test-ubuntu
           inspec shell -t k8s-container:///test-alpine/test-alpine --command "command('whoami').stdout"
 
