@@ -104,6 +104,9 @@ jobs:
         uses: actionshub/chef-install@main
         with:
           project: inspec
+        env:
+          CHEF_LICENSE: accept-silent
+          CHEF_LICENSE_KEY: ${{ secrets.SAF_CHEF_LICENSE_KEY }}
 
       - name: Build and install plugin
         run: |
