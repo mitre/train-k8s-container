@@ -10,12 +10,15 @@ RSpec.describe TrainPlugins::K8sContainer::KubectlExecClient do
   let(:namespace) { TrainPlugins::K8sContainer::KubectlExecClient::DEFAULT_NAMESPACE }
   let(:shell_op) { Struct.new(:stdout, :stderr, :exitstatus) }
 
-  subject { described_class.new(pod:, namespace:, container_name:) }
+  # Helper to create client with null logger
+  let(:null_logger) { Logger.new(IO::NULL) }
+  let(:client) { described_class.new(pod:, namespace:, container_name:, logger: null_logger) }
+
   describe '.instance' do
     it 'should return a kubectl exec object' do
-      expect(subject.pod).to eq(pod)
-      expect(subject.namespace).to eq(namespace)
-      expect(subject.container_name).to eq(container_name)
+      expect(client.pod).to eq(pod)
+      expect(client.namespace).to eq(namespace)
+      expect(client.container_name).to eq(container_name)
     end
   end
 
@@ -26,7 +29,7 @@ RSpec.describe TrainPlugins::K8sContainer::KubectlExecClient do
       allow(shell).to receive(:run_command).and_return(result)
     end
 
-    subject { described_class.new(pod:, namespace:, container_name:).execute(command) }
+    subject { client.execute(command) }
     context 'on successful command' do
       let(:stdout) { 'root' }
       let(:stderr) { '' }
@@ -115,10 +118,24 @@ RSpec.describe TrainPlugins::K8sContainer::KubectlExecClient do
         )
       end
 
-      it 'uses shellout by default (PTY disabled)' do
+      it 'uses PTY by default (persistent sessions enabled)' do
+        skip 'Running on Windows' if RUBY_PLATFORM.match?(/windows|mswin|msys|mingw|cygwin/)
+
         client.execute('test')
-        expect(client).to have_received(:execute_via_shellout)
-        expect(client).not_to have_received(:execute_via_pty)
+        expect(client).to have_received(:execute_via_pty)
+        expect(client).not_to have_received(:execute_via_shellout)
+      end
+
+      it 'can opt-out with use_pty: false' do
+        client_no_pty = described_class.new(pod: 'test', namespace: 'default', container_name: 'test', use_pty: false)
+        allow(client_no_pty).to receive(:execute_via_shellout).and_return(
+          Train::Extras::CommandResult.new('output', '', 0)
+        )
+        allow(client_no_pty).to receive(:execute_via_pty)
+
+        client_no_pty.execute('test')
+        expect(client_no_pty).to have_received(:execute_via_shellout)
+        expect(client_no_pty).not_to have_received(:execute_via_pty)
       end
 
       it 'uses shellout when PTY unavailable on Windows' do
@@ -152,7 +169,19 @@ RSpec.describe TrainPlugins::K8sContainer::KubectlExecClient do
       it 'disables PTY after persistent errors' do
         skip 'Running on Windows' if RUBY_PLATFORM.match?(/windows|mswin|msys|mingw|cygwin/)
 
-        client_pty = described_class.new(pod: 'test', namespace: 'default', container_name: 'test', use_pty: true)
+        # Mock logger to suppress ERROR output during test
+        mock_logger = instance_double(Logger)
+        allow(mock_logger).to receive(:debug)
+        allow(mock_logger).to receive(:warn)
+        allow(mock_logger).to receive(:error)
+
+        client_pty = described_class.new(
+          pod: 'test',
+          namespace: 'default',
+          container_name: 'test',
+          use_pty: true,
+          logger: mock_logger
+        )
 
         # Mock SessionManager to raise PTY error
         instance_double(TrainPlugins::K8sContainer::PtySession)
@@ -167,6 +196,9 @@ RSpec.describe TrainPlugins::K8sContainer::KubectlExecClient do
         # First call should catch PTY error and fallback
         result = client_pty.execute('test')
         expect(result.stdout).to eq('output')
+
+        # Verify error was logged (but not output to console)
+        expect(mock_logger).to have_received(:error).with(/PTY execution failed/)
 
         # Verify PTY fallback is now disabled
         expect(client_pty.instance_variable_get(:@pty_fallback_disabled)).to be true

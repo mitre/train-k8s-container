@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'logger'
+
 # Load support files
 Dir[File.join(__dir__, 'support', '**', '*.rb')].sort.each { |f| require f }
 
@@ -12,5 +14,11 @@ RSpec.configure do |config|
 
   config.expect_with :rspec do |c|
     c.syntax = :expect
+  end
+
+  # Suppress logger output during tests (keeps test output clean)
+  # Tests can override by providing explicit logger
+  config.before(:each) do
+    @null_logger = Logger.new(IO::NULL)
   end
 end

@@ -18,7 +18,7 @@ module TrainPlugins
       DEFAULT_NAMESPACE = 'default'
       DEFAULT_TIMEOUT = 60
 
-      def initialize(pod:, namespace: nil, container_name: nil, kubectl_path: 'kubectl', timeout: DEFAULT_TIMEOUT, logger: nil, use_pty: false)
+      def initialize(pod:, namespace: nil, container_name: nil, kubectl_path: 'kubectl', timeout: DEFAULT_TIMEOUT, logger: nil, use_pty: nil)
         @pod = pod
         @container_name = container_name
         @namespace = namespace
@@ -26,7 +26,8 @@ module TrainPlugins
         @timeout = timeout
         @logger = logger || default_logger
         @shell_detector = nil # Will be created lazily
-        @use_pty = use_pty || ENV['TRAIN_K8S_PTY_MODE'] == 'true'
+        # Default to enabled (opt-out via use_pty: false or TRAIN_K8S_PTY_MODE=false)
+        @use_pty = use_pty.nil? ? (ENV['TRAIN_K8S_PTY_MODE'] != 'false') : use_pty
         @pty_fallback_disabled = false
       end
 
