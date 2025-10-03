@@ -14,7 +14,7 @@ Gem::Specification.new do |spec|
   spec.description = 'Transport for Kubernetes containers for use with Chef InSpec.'
   spec.homepage = 'https://github.com/inspec/train-k8s-container'
   spec.license = 'Apache-2.0'
-  spec.required_ruby_version = '>= 3.3'
+  spec.required_ruby_version = '>= 3.1'
 
   spec.metadata['rubygems_mfa_required'] = 'true'
   spec.metadata['homepage_uri'] = spec.homepage

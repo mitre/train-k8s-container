@@ -13,7 +13,30 @@ env:
   RUBY_VERSION_DEFAULT: '3.3'
 
 jobs:
-  # Job 1: Fast unit tests and linting (no Kubernetes needed)
+  # Job 1: Build gem (runs first, uploads artifact)
+  build-gem:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ env.RUBY_VERSION_DEFAULT }}
+
+      - name: Build gem
+        run: gem build train-k8s-container.gemspec
+
+      - name: Upload gem artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: train-k8s-container-gem
+          path: train-k8s-container-*.gem
+          retention-days: 5
+
+  # Job 2: Fast unit tests and linting (no Kubernetes needed)
   unit-tests:
     runs-on: ubuntu-latest
     strategy:
@@ -40,10 +63,10 @@ jobs:
       - name: Run unit tests
         run: bundle exec rspec --format documentation
 
-  # Job 2: Integration tests with kind cluster
+  # Job 3: Integration tests with kind cluster
   integration-tests:
     runs-on: ubuntu-latest
-    needs: unit-tests
+    needs: [build-gem, unit-tests]
     env:
       CHEF_LICENSE: accept-silent
       CHEF_LICENSE_KEY: ${{ secrets.SAF_CHEF_LICENSE_KEY }}
@@ -103,15 +126,18 @@ jobs:
         env:
           KUBECONFIG: /home/runner/.kube/config
 
+      - name: Download gem artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: train-k8s-container-gem
+
       - name: Install InSpec
         uses: actionshub/chef-install@main
         with:
           project: inspec
 
-      - name: Build and install plugin
-        run: |
-          gem build train-k8s-container.gemspec
-          inspec plugin install train-k8s-container-*.gem
+      - name: Install plugin
+        run: inspec plugin install train-k8s-container-*.gem
 
       - name: Verify plugin installation
         run: inspec plugin list
@@ -133,31 +159,3 @@ jobs:
           kubectl logs test-ubuntu || true
           kubectl logs test-alpine || true
 
-  # Job 3: Build and install gem
-  gem-build:
-    runs-on: ubuntu-latest
-    needs: [unit-tests]
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: ${{ env.RUBY_VERSION_DEFAULT }}
-          bundler-cache: true
-
-      - name: Build gem
-        run: gem build train-k8s-container.gemspec
-
-      - name: Install gem locally
-        run: gem install ./train-k8s-container-*.gem
-
-      - name: Verify gem loads
-        run: ruby -e "require 'train-k8s-container'; puts TrainPlugins::K8sContainer::VERSION"
-
-      - name: Upload gem artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: train-k8s-container-gem-ruby-${{ env.RUBY_VERSION_DEFAULT }}
-          path: train-k8s-container-*.gem
