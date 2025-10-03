@@ -97,11 +97,15 @@ jobs:
         env:
           KUBECONFIG: /home/runner/.kube/config
 
-      - name: Test with InSpec (if available)
+      - name: Install InSpec
+        uses: actionshub/chef-install@main
+        with:
+          project: inspec
+
+      - name: Test with InSpec
         run: |
-          gem install inspec
           inspec detect -t k8s-container:///test-ubuntu/test-ubuntu
-        continue-on-error: true
+          inspec shell -t k8s-container:///test-alpine/test-alpine --command "command('whoami').stdout"
 
       - name: Debug on failure
         if: failure()
