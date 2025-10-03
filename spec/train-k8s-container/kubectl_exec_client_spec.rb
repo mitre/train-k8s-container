@@ -2,6 +2,7 @@
 
 require_relative '../spec_helper'
 require 'train-k8s-container/kubectl_exec_client'
+require 'train-k8s-container/shell_detector'
 
 RSpec.describe TrainPlugins::K8sContainer::KubectlExecClient do
   let(:shell) { double(Mixlib::ShellOut) }
@@ -23,48 +24,64 @@ RSpec.describe TrainPlugins::K8sContainer::KubectlExecClient do
   end
 
   describe '#execute' do
-    let(:result) { shell_op.new(stdout, stderr, exitstatus) }
     before do
-      allow(Mixlib::ShellOut).to receive(:new).and_return(shell)
-      allow(shell).to receive(:run_command).and_return(result)
+      # Mock Mixlib::ShellOut to return different results based on command
+      allow(Mixlib::ShellOut).to receive(:new) do |cmd|
+        mock_shell = double('Mixlib::ShellOut')
+        allow(mock_shell).to receive(:run_command) do
+          # Return appropriate result based on what command is being run
+          if cmd.include?('echo test')
+            # OS detection
+            shell_op.new('test', '', 0)
+          elsif cmd.include?('test -x /bin/bash')
+            # Shell detection for bash
+            shell_op.new('OK', '', 0)
+          elsif cmd.include?('whoami')
+            # Actual test command
+            shell_op.new('root', '', 0)
+          elsif cmd.include?('chmod')
+            # Error test command
+            shell_op.new('', "chmod: missing operand\nTry 'chmod --help' for more information.\ncommand terminated with exit code 1\n", 1)
+          else
+            # Default
+            shell_op.new('', '', 0)
+          end
+        end
+        mock_shell
+      end
     end
 
-    subject { client.execute(command) }
     context 'on successful command' do
-      let(:stdout) { 'root' }
-      let(:stderr) { '' }
-      let(:exitstatus) { 0 }
-      let(:command) { 'whoami' }
       it '#stdout returns the output of the given command' do
-        expect(subject.stdout).to eq('root')
+        result = client.execute('whoami')
+        expect(result.stdout).to eq('root')
       end
 
       it '#stderr returns empty' do
-        expect(subject.stderr).to be_empty
+        result = client.execute('whoami')
+        expect(result.stderr).to be_empty
       end
 
       it '#exit_status returns zero exit code' do
-        expect(subject.exit_status).to eq(0)
+        result = client.execute('whoami')
+        expect(result.exit_status).to eq(0)
       end
     end
 
     context 'on wrong command' do
-      let(:stdout) { '' }
-      let(:stderr) do
-        "chmod: missing operand\nTry 'chmod --help' for more information.\ncommand terminated with exit code 1\n"
-      end
-      let(:exitstatus) { 1 }
-      let(:command) { 'chmod' }
       it '#stdout returns empty' do
-        expect(subject.stdout).to be_empty
+        result = client.execute('chmod')
+        expect(result.stdout).to be_empty
       end
 
       it '#stderr returns error message' do
-        expect(subject.stderr).not_to be_empty
+        result = client.execute('chmod')
+        expect(result.stderr).not_to be_empty
       end
 
       it '#exit_status returns non-zero exit code' do
-        expect(subject.exit_status).not_to eq(0)
+        result = client.execute('chmod')
+        expect(result.exit_status).not_to eq(0)
       end
     end
   end

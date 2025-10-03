@@ -142,10 +142,10 @@ RSpec.describe TrainPlugins::K8sContainer::ShellDetector do
         allow(kubectl_client).to receive(:execute_raw)
           .with('echo test')
           .and_return(double(stdout: '', stderr: "'echo' is not recognized", exit_status: 1))
-        # Mock cmd.exe available
+        # Mock cmd.exe available (uses 'where' command for Windows)
         allow(kubectl_client).to receive(:execute_raw)
-          .with(/test -x.*cmd\.exe/)
-          .and_return(double(stdout: 'OK', stderr: '', exit_status: 0))
+          .with('where cmd.exe')
+          .and_return(double(stdout: 'C:\\Windows\\System32\\cmd.exe', stderr: '', exit_status: 0))
       end
 
       it 'detects cmd.exe' do

@@ -48,11 +48,29 @@ module TrainPlugins
       end
 
       def shell_available?(shell_path)
-        # Use test -x to check if shell exists and is executable
-        result = @kubectl_client.execute_raw("test -x #{shell_path} && echo OK")
-        result.stdout.strip == 'OK' && result.exit_status == 0
+        if windows_shell?(shell_path)
+          check_windows_shell(shell_path)
+        else
+          check_unix_shell(shell_path)
+        end
       rescue StandardError
         false
+      end
+
+      def windows_shell?(shell_path)
+        shell_path.end_with?('.exe')
+      end
+
+      def check_unix_shell(shell_path)
+        # Use test -x to check if shell exists and is executable
+        result = @kubectl_client.execute_raw("test -x #{shell_path} && echo OK")
+        result.stdout.strip == 'OK' && result.exit_status.zero?
+      end
+
+      def check_windows_shell(shell_path)
+        # For Windows, use 'where' command to check if shell exists
+        result = @kubectl_client.execute_raw("where #{shell_path}")
+        result.exit_status.zero? && !result.stdout.empty?
       end
 
       def shell_type
