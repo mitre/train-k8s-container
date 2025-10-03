@@ -26,8 +26,8 @@ module TrainPlugins
         @timeout = timeout
         @logger = logger || default_logger
         @shell_detector = nil # Will be created lazily
-        # Default to enabled (opt-out via use_pty: false or TRAIN_K8S_PTY_MODE=false)
-        @use_pty = use_pty.nil? ? (ENV['TRAIN_K8S_PTY_MODE'] != 'false') : use_pty
+        # Default to enabled (opt-out via use_pty: false or TRAIN_K8S_SESSION_MODE=false)
+        @use_pty = use_pty.nil? ? (ENV['TRAIN_K8S_SESSION_MODE'] != 'false') : use_pty
         @pty_fallback_disabled = false
       end
 
