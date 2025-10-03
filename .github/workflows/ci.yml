@@ -100,17 +100,26 @@ jobs:
         env:
           KUBECONFIG: /home/runner/.kube/config
 
-      # TODO: Add InSpec plugin testing after basic tests work
-      # - name: Install InSpec
-      #   uses: actionshub/chef-install@main
-      #   with:
-      #     project: inspec
-      # - name: Build and install plugin
-      #   run: |
-      #     gem build train-k8s-container.gemspec
-      #     inspec plugin install train-k8s-container-*.gem
-      # - name: Test with InSpec
-      #   run: inspec detect -t k8s-container:///test-ubuntu/test-ubuntu
+      - name: Install InSpec
+        uses: actionshub/chef-install@main
+        with:
+          project: inspec
+
+      - name: Build and install plugin
+        run: |
+          gem build train-k8s-container.gemspec
+          inspec plugin install train-k8s-container-*.gem
+
+      - name: Verify plugin installation
+        run: inspec plugin list
+
+      - name: Test with InSpec detect
+        run: inspec detect -t k8s-container:///test-ubuntu/test-ubuntu
+
+      - name: Test with InSpec shell
+        run: |
+          inspec shell -t k8s-container:///test-ubuntu/test-ubuntu --command "command('whoami').stdout"
+          inspec shell -t k8s-container:///test-alpine/test-alpine --command "command('cat /etc/alpine-release').stdout"
 
       - name: Debug on failure
         if: failure()
