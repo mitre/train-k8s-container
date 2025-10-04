@@ -2,6 +2,10 @@
 
 source 'https://rubygems.org'
 
+# train-core is needed for development/testing but NOT declared in gemspec
+# Train plugins are loaded within InSpec's environment which provides train
+gem 'train-core', ['>= 1.7.5', '< 4.0']
+
 # Specify your gem's dependencies in train-k8s-container.gemspec
 gemspec
 

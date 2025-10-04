@@ -31,5 +31,10 @@ Gem::Specification.new do |spec|
 
   spec.require_paths = ['lib']
 
-  spec.add_dependency 'train', '~> 3.0'
+  # NOTE: Do not list 'train' or 'inspec' as dependencies.
+  # Train plugins are loaded within InSpec's environment, which already provides
+  # train, train-core, and all their dependencies. Declaring train as a dependency
+  # causes gem activation conflicts (e.g., multi_json version conflicts).
+  #
+  # For development, add train to Gemfile in the development group.
 end
