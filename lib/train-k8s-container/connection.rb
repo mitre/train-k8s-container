@@ -20,15 +20,27 @@ module TrainPlugins
       def initialize(options)
         super
 
-        # Parse URI path: /namespace/pod/container or //pod/container (default namespace)
-        uri_path = options[:path]&.gsub(%r{^/}, '')
-        path_parts = uri_path&.split('/')
+        # Parse URI path format (InSpec converts k8s-container://target to path="//target"):
+        # - k8s-container://pod/container → path="//pod/container" (default namespace)
+        # - k8s-container://namespace/pod/container → path="//namespace/pod/container"
+        path_parts = options[:path]&.split('/')&.reject(&:empty?)
 
-        # Extract from path or use explicit options
-        host = !options[:host].nil? && !options[:host].empty? ? options[:host] : nil
-        @namespace = options[:namespace] || host || path_parts&.first || TrainPlugins::K8sContainer::KubectlExecClient::DEFAULT_NAMESPACE
-        @pod = options[:pod] || path_parts&.[](1)
-        @container_name = options[:container_name] || path_parts&.[](2)
+        if path_parts&.length == 2
+          # Format: //pod/container (default namespace)
+          @namespace = options[:namespace] || TrainPlugins::K8sContainer::KubectlExecClient::DEFAULT_NAMESPACE
+          @pod = options[:pod] || path_parts.first
+          @container_name = options[:container_name] || path_parts[1]
+        elsif path_parts&.length == 3
+          # Format: //namespace/pod/container
+          @namespace = options[:namespace] || path_parts.first
+          @pod = options[:pod] || path_parts[1]
+          @container_name = options[:container_name] || path_parts[2]
+        else
+          # No valid path - must use explicit options
+          @namespace = options[:namespace] || TrainPlugins::K8sContainer::KubectlExecClient::DEFAULT_NAMESPACE
+          @pod = options[:pod]
+          @container_name = options[:container_name]
+        end
 
         validate_parameters
       end
