@@ -107,26 +107,19 @@ jobs:
           cyclonedx-ruby -p . -o sbom.json
           echo "✅ Generated CycloneDX SBOM in JSON format"
 
-      - name: Generate SBOM (XML)
-        run: |
-          cyclonedx-ruby -p . -f xml -o sbom.xml
-          echo "✅ Generated CycloneDX SBOM in XML format"
-
       - name: Upload SBOM artifacts
         uses: actions/upload-artifact@v4
         with:
           name: sbom-${{ github.sha }}
-          path: |
-            sbom.json
-            sbom.xml
+          path: sbom.json
           retention-days: 90
 
       - name: SBOM generation summary
         if: always()
         run: |
           echo "## 📦 Software Bill of Materials (SBOM)" >> $GITHUB_STEP_SUMMARY
-          echo "Generated CycloneDX SBOM in JSON and XML formats" >> $GITHUB_STEP_SUMMARY
-          echo "✅ SBOM artifacts uploaded for 90-day retention" >> $GITHUB_STEP_SUMMARY
+          echo "Generated CycloneDX SBOM in JSON format" >> $GITHUB_STEP_SUMMARY
+          echo "✅ SBOM artifact uploaded for 90-day retention" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### SBOM Contents Preview" >> $GITHUB_STEP_SUMMARY
           echo '```json' >> $GITHUB_STEP_SUMMARY
