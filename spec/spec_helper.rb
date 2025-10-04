@@ -1,9 +1,16 @@
 # frozen_string_literal: true
 
+# SimpleCov must be loaded before application code
+require 'simplecov'
+SimpleCov.start do
+  add_filter '/spec/'
+  add_filter '/test/'
+end
+
 require 'logger'
 
 # Load support files
-Dir[File.join(__dir__, 'support', '**', '*.rb')].sort.each { |f| require f }
+Dir[File.join(__dir__, 'support', '**', '*.rb')].each { |f| require f }
 
 RSpec.configure do |config|
   # Enable flags like --only-failures and --next-failure
