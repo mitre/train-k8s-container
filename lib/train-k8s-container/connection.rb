@@ -20,11 +20,16 @@ module TrainPlugins
       def initialize(options)
         super
 
+        # Parse URI path: /namespace/pod/container or //pod/container (default namespace)
         uri_path = options[:path]&.gsub(%r{^/}, '')
-        @pod = options[:pod] || uri_path&.split('/')&.first
-        @container_name = options[:container_name] || uri_path&.split('/')&.last
+        path_parts = uri_path&.split('/')
+
+        # Extract from path or use explicit options
         host = !options[:host].nil? && !options[:host].empty? ? options[:host] : nil
-        @namespace = options[:namespace] || host || TrainPlugins::K8sContainer::KubectlExecClient::DEFAULT_NAMESPACE
+        @namespace = options[:namespace] || host || path_parts&.[](0) || TrainPlugins::K8sContainer::KubectlExecClient::DEFAULT_NAMESPACE
+        @pod = options[:pod] || path_parts&.[](1)
+        @container_name = options[:container_name] || path_parts&.[](2)
+
         validate_parameters
       end
 
