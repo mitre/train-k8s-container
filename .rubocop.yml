@@ -1,5 +1,5 @@
 AllCops:
-  TargetRubyVersion: 3.3
+  TargetRubyVersion: 3.1  # Match gemspec minimum (InSpec 6.x embedded Ruby)
   NewCops: enable
   SuggestExtensions: false
   Exclude:
@@ -9,20 +9,25 @@ AllCops:
 Naming/FileName:
   Enabled: false
 
-# TODO Track 2: Re-enable after refactoring with shell detection
-# These will be addressed when we refactor kubectl_exec_client and connection
-# for shell detection and improved error handling
+# Metrics - Transport plugins need larger classes for connection/platform management
+# Following InSpec ecosystem standard (train-kubernetes, inspec-aws disable these)
+Metrics/ClassLength:
+  Enabled: false  # InSpec plugins inherently have larger connection classes
+
+Metrics/ParameterLists:
+  Max: 7  # Ruby 3.1+ keyword arguments are self-documenting and preferred
+
 Metrics/AbcSize:
-  Enabled: false  # TODO: Re-enable in Track 2
+  Enabled: false
 
 Metrics/CyclomaticComplexity:
-  Enabled: false  # TODO: Re-enable in Track 2
+  Enabled: false
 
 Metrics/PerceivedComplexity:
-  Enabled: false  # TODO: Re-enable in Track 2
+  Enabled: false
 
 Metrics/MethodLength:
-  Enabled: false  # TODO: Re-enable in Track 2
+  Enabled: false
 
 # RSpec tests will have longer blocks - acceptable
 Metrics/BlockLength:
@@ -32,3 +37,7 @@ Metrics/BlockLength:
 # Allow reasonable line length (Chef standard is 150)
 Layout/LineLength:
   Max: 150
+
+# Gemspec - Support Ruby >= 3.1 (InSpec 6.x) but develop on 3.3
+Gemspec/RequiredRubyVersion:
+  Enabled: false

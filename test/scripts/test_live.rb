@@ -1,4 +1,6 @@
 #!/usr/bin/env ruby
+# frozen_string_literal: true
+
 # Live testing script for train-k8s-container
 # Tests the plugin directly without InSpec
 

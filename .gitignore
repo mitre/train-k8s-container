@@ -4,6 +4,8 @@ Gemfile.lock
 
 .byebug_history
 .rspec_status
+coverage/
+.coverage
 
 .ruby-version
 .ruby-gemset
@@ -12,6 +14,7 @@ Gemfile.lock
 CLAUDE.md
 .claude/
 .context-trigger
+.archive/
 CONTEXT-RECOVERY.md
 *RESEARCH*.md
 *MODERNIZATION*.md
