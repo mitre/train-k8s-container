@@ -3,6 +3,7 @@
 require 'pty'
 require 'timeout'
 require_relative 'errors'
+require_relative 'ansi_sanitizer'
 
 module TrainPlugins
   module K8sContainer
@@ -24,6 +25,7 @@ module TrainPlugins
         @shell = shell
         @timeout = timeout
         @command_timeout = DEFAULT_COMMAND_TIMEOUT
+        # Logger is optional - all logging uses safe navigation (@logger&.method)
         @logger = logger
         @reader = nil
         @writer = nil
@@ -139,7 +141,7 @@ module TrainPlugins
         output = lines.join
 
         # Separate stdout/stderr based on exit code
-        if exit_code == 0
+        if exit_code.zero?
           Train::Extras::CommandResult.new(output.strip, '', exit_code)
         else
           Train::Extras::CommandResult.new('', output.strip, exit_code)
@@ -147,13 +149,7 @@ module TrainPlugins
       end
 
       def strip_ansi_sequences(text)
-        text.gsub(/\e\[([;\d]+)?[A-Za-z]/, '')
-            .gsub(/\e\][^\a]*\a/, '')
-            .gsub("\e[A", '')
-            .gsub("\e[C", '')
-            .gsub("\e[K", '')
-            .gsub("\r\n", "\n")
-            .gsub("\r", "\n")
+        AnsiSanitizer.sanitize(text)
       end
     end
   end

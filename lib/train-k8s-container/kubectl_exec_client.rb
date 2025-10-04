@@ -7,6 +7,9 @@ require 'train/options'
 require 'train/extras'
 require_relative 'retry_handler'
 require_relative 'session_manager'
+require_relative 'ansi_sanitizer'
+require_relative 'kubectl_command_builder'
+require_relative 'result_processor'
 
 module TrainPlugins
   module K8sContainer
@@ -17,6 +20,7 @@ module TrainPlugins
 
       DEFAULT_NAMESPACE = 'default'
       DEFAULT_TIMEOUT = 60
+      SHELL_DETECTION_TIMEOUT = 5
 
       def initialize(pod:, namespace: nil, container_name: nil, kubectl_path: 'kubectl', timeout: DEFAULT_TIMEOUT, logger: nil, use_pty: nil)
         @pod = pod
@@ -29,6 +33,12 @@ module TrainPlugins
         # Default to enabled (opt-out via use_pty: false or TRAIN_K8S_SESSION_MODE=false)
         @use_pty = use_pty.nil? ? (ENV['TRAIN_K8S_SESSION_MODE'] != 'false') : use_pty
         @pty_fallback_disabled = false
+        @command_builder = KubectlCommandBuilder.new(
+          kubectl_path: @kubectl_path,
+          pod: @pod,
+          namespace: @namespace,
+          container_name: @container_name
+        )
       end
 
       def execute(command, opts = {})
@@ -49,8 +59,8 @@ module TrainPlugins
 
       # Raw execution for shell detection (uses /bin/sh directly)
       def execute_raw(command)
-        instruction = build_raw_instruction(command)
-        shell = Mixlib::ShellOut.new(instruction, timeout: 5)
+        instruction = @command_builder.with_raw_shell(command)
+        shell = Mixlib::ShellOut.new(instruction, timeout: SHELL_DETECTION_TIMEOUT)
         res = shell.run_command
         Train::Extras::CommandResult.new(res.stdout, res.stderr, res.exitstatus)
       rescue Errno::ENOENT => _e
@@ -69,26 +79,13 @@ module TrainPlugins
         shell = detect_shell
         raise ShellNotAvailableError, 'No shell available for PTY mode' unless shell
 
-        session = SessionManager.instance.get_session(
-          session_key,
-          kubectl_cmd: base_kubectl_command,
-          shell: shell,
-          timeout: opts[:timeout] || @timeout,
-          logger: @logger
-        )
-
+        session = create_pty_session(shell, opts)
         session.execute(command)
       rescue PtySession::SessionClosedError => e
         # Try reconnecting once
         @logger.warn("PTY session closed: #{e.message}, attempting reconnect")
         SessionManager.instance.cleanup_session(session_key)
-        session = SessionManager.instance.get_session(
-          session_key,
-          kubectl_cmd: base_kubectl_command,
-          shell: shell,
-          timeout: opts[:timeout] || @timeout,
-          logger: @logger
-        )
+        session = create_pty_session(shell, opts)
         session.execute(command)
       rescue PtySession::PtyError, ShellNotAvailableError => e
         @logger.error("PTY execution failed: #{e.message}, falling back to one-off execution")
@@ -108,8 +105,7 @@ module TrainPlugins
                      execute_without_shell(command, opts)
                    end
 
-          validate_result(result, command)
-          sanitize_result(result)
+          ResultProcessor.process(result, command, @logger)
         end
       end
 
@@ -117,13 +113,9 @@ module TrainPlugins
         "#{@namespace}/#{@pod}/#{@container_name}"
       end
 
-      def base_kubectl_command
-        [
-          @kubectl_path, 'exec', '--stdin',
-          @pod, '-n', @namespace, '-c', @container_name
-        ].join(' ')
-      end
-
+      # Lazy-load and cache shell detector (caching at instance level)
+      # ShellDetector also caches detection result internally for efficiency
+      # This double-caching prevents both repeated object creation and detection attempts
       def detect_shell
         require_relative 'shell_detector' unless defined?(ShellDetector)
         @shell_detector ||= ShellDetector.new(self)
@@ -131,18 +123,24 @@ module TrainPlugins
       end
 
       def execute_with_shell(shell_path, command, opts)
-        instruction = if windows_shell?(shell_path)
-                        build_windows_instruction(shell_path, command)
+        instruction = if ShellDetector.windows_shell?(shell_path)
+                        @command_builder.with_windows_shell(shell_path, command)
                       else
-                        build_shell_instruction(shell_path, command)
+                        @command_builder.with_shell(shell_path, command)
                       end
         shell = Mixlib::ShellOut.new(instruction, timeout: opts[:timeout] || @timeout)
         res = shell.run_command
         Train::Extras::CommandResult.new(res.stdout, res.stderr, res.exitstatus)
       end
 
-      def windows_shell?(shell_path)
-        shell_path.end_with?('.exe')
+      def create_pty_session(shell, opts)
+        SessionManager.instance.get_session(
+          session_key,
+          kubectl_cmd: @command_builder.base_command.join(' '),
+          shell: shell,
+          timeout: opts[:timeout] || @timeout,
+          logger: @logger
+        )
       end
 
       def execute_without_shell(command, opts)
@@ -152,108 +150,10 @@ module TrainPlugins
                 "Container has no shell - cannot execute complex command with operators: #{command}"
         end
 
-        instruction = build_direct_instruction(command)
+        instruction = @command_builder.direct_binary(command)
         shell = Mixlib::ShellOut.new(instruction, timeout: opts[:timeout] || @timeout)
         res = shell.run_command
         Train::Extras::CommandResult.new(res.stdout, res.stderr, res.exitstatus)
-      end
-
-      def build_shell_instruction(shell_path, command)
-        [
-          @kubectl_path, 'exec', '--stdin',
-          @pod, '-n', @namespace, '-c', @container_name,
-          '--', shell_path, '-c', Shellwords.escape(command)
-        ].join(' ')
-      end
-
-      def build_windows_instruction(shell_path, command)
-        # Windows shells use different syntax
-        case shell_path
-        when 'cmd.exe'
-          # cmd.exe uses /c flag
-          [
-            @kubectl_path, 'exec', '--stdin',
-            @pod, '-n', @namespace, '-c', @container_name,
-            '--', 'cmd.exe', '/c', Shellwords.escape(command)
-          ].join(' ')
-        when 'powershell.exe', 'pwsh.exe'
-          # PowerShell uses -Command flag
-          [
-            @kubectl_path, 'exec', '--stdin',
-            @pod, '-n', @namespace, '-c', @container_name,
-            '--', shell_path, '-Command', Shellwords.escape(command)
-          ].join(' ')
-        else
-          # Fallback to Unix-style (shouldn't happen)
-          build_shell_instruction(shell_path, command)
-        end
-      end
-
-      def build_direct_instruction(command)
-        [
-          @kubectl_path, 'exec', '--stdin',
-          @pod, '-n', @namespace, '-c', @container_name,
-          '--'
-        ].concat(command.split).join(' ')
-      end
-
-      def build_raw_instruction(command)
-        [
-          @kubectl_path, 'exec', '--stdin',
-          @pod, '-n', @namespace, '-c', @container_name,
-          '--', '/bin/sh', '-c', Shellwords.escape(command)
-        ].join(' ')
-      end
-
-      def validate_result(result, command)
-        # Detect silent network failures (kubectl returns exit 0 despite errors)
-        if result.exit_status == 0 && result.stdout.empty? && result.stderr.empty? && command_should_produce_output?(command)
-          @logger.warn("Silent failure detected for command: #{command}")
-          raise RetryHandler::NetworkError, 'Silent failure - no output received'
-        end
-
-        # Detect pod/container errors
-        if result.stderr.include?('error dialing backend') ||
-           result.stderr.include?('connection refused') ||
-           result.stderr.include?('not found')
-          @logger.warn("Connection error: #{result.stderr}")
-          raise RetryHandler::ConnectionError, result.stderr
-        end
-      end
-
-      def command_should_produce_output?(command)
-        # Commands that typically don't produce output
-        !command.match?(/^(true|false|touch|mkdir|rm|sleep|test)\b/)
-      end
-
-      def sanitize_result(result)
-        # Strip ANSI escape sequences for security and reliability
-        Train::Extras::CommandResult.new(
-          sanitize_output(result.stdout),
-          sanitize_output(clean_exit_message(result.stderr)),
-          parse_actual_exit_code(result.stderr) || result.exit_status
-        )
-      end
-
-      def sanitize_output(output)
-        return '' if output.nil? || output.empty?
-
-        # Remove ANSI escape sequences
-        output.gsub(/\e\[([;\d]+)?[A-Za-z]/, '')
-              .gsub(/\e\][^\a]*\a/, '')
-              .gsub("\r\n", "\n")
-              .gsub("\r", "\n")
-      end
-
-      def parse_actual_exit_code(stderr)
-        # kubectl sometimes appends: "command terminated with exit code N"
-        match = stderr.match(/command terminated with exit code (\d+)/)
-        match ? match[1].to_i : nil
-      end
-
-      def clean_exit_message(stderr)
-        # Remove kubectl's exit code message from stderr
-        stderr.gsub(/\ncommand terminated with exit code \d+\s*$/, '')
       end
 
       def default_logger

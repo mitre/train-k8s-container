@@ -9,13 +9,13 @@ module TrainPlugins
         '/bin/bash',   # Ubuntu, Debian, RHEL, CentOS
         '/bin/sh',     # POSIX standard, symlink in most distros
         '/bin/ash',    # Alpine, BusyBox
-        '/bin/zsh',    # Less common but possible
+        '/bin/zsh' # Less common but possible
       ].freeze
 
       WINDOWS_SHELLS = [
         'cmd.exe',           # Windows command prompt (most reliable)
         'powershell.exe',    # PowerShell 5.1 (Windows Server)
-        'pwsh.exe',          # PowerShell Core 6+
+        'pwsh.exe' # PowerShell Core 6+
       ].freeze
 
       def initialize(kubectl_client)
@@ -48,26 +48,29 @@ module TrainPlugins
       end
 
       def shell_available?(shell_path)
-        if windows_shell?(shell_path)
-          check_windows_shell(shell_path)
+        if self.class.windows_shell?(shell_path)
+          windows_shell_available?(shell_path)
         else
-          check_unix_shell(shell_path)
+          unix_shell_available?(shell_path)
         end
       rescue StandardError
         false
       end
 
-      def windows_shell?(shell_path)
+      # Check if shell is a Windows shell (ends with .exe)
+      # @param shell_path [String] Path or name of shell
+      # @return [Boolean] True if Windows shell
+      def self.windows_shell?(shell_path)
         shell_path.end_with?('.exe')
       end
 
-      def check_unix_shell(shell_path)
+      def unix_shell_available?(shell_path)
         # Use test -x to check if shell exists and is executable
         result = @kubectl_client.execute_raw("test -x #{shell_path} && echo OK")
         result.stdout.strip == 'OK' && result.exit_status.zero?
       end
 
-      def check_windows_shell(shell_path)
+      def windows_shell_available?(shell_path)
         # For Windows, use 'where' command to check if shell exists
         result = @kubectl_client.execute_raw("where #{shell_path}")
         result.exit_status.zero? && !result.stdout.empty?
