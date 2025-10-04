@@ -3,7 +3,9 @@
 require 'train'
 require 'train/plugins'
 require 'train/file/remote/linux'
+require 'train/file/remote/windows'
 require_relative 'platform'
+require_relative 'kubernetes_name_validator'
 
 module TrainPlugins
   module K8sContainer
@@ -53,10 +55,25 @@ module TrainPlugins
       def validate_parameters
         raise ArgumentError, 'Missing Parameter `pod`' unless pod
         raise ArgumentError, 'Missing Parameter `container_name`' unless container_name
+
+        # Validate Kubernetes resource names (RFC 1123 compliance, injection prevention)
+        KubernetesNameValidator.validate!(pod, resource_type: 'pod')
+        KubernetesNameValidator.validate!(namespace, resource_type: 'namespace')
+        KubernetesNameValidator.validate!(container_name, resource_type: 'container')
       end
 
       def file_via_connection(path, *_args)
-        ::Train::File::Remote::Linux.new(self, path)
+        # Detect container OS to use appropriate file handler
+        detect_shell # Triggers OS detection in ShellDetector
+        container_os = @shell_detector&.container_os || :unknown
+
+        case container_os
+        when :windows
+          ::Train::File::Remote::Windows.new(self, path)
+        else
+          # Default to Linux for unix and unknown (distroless still uses Unix paths)
+          ::Train::File::Remote::Linux.new(self, path)
+        end
       end
     end
   end

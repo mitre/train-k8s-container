@@ -10,6 +10,7 @@ gem 'train-core', ['>= 1.7.5', '< 4.0']
 gemspec
 
 group :development do
+  gem 'bundler-audit', '~> 0.9'
   gem 'cookstyle', '~> 8.1'
   gem 'rake', '~> 13.0', '>= 13.0.6'
   gem 'rspec', '~> 3.11'
@@ -18,4 +19,5 @@ end
 group :test do
   gem 'byebug'
   gem 'pry'
+  gem 'simplecov', require: false
 end
