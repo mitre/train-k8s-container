@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative 'shell_detector'
+
 module TrainPlugins
   module K8sContainer
     # Platform detection module for k8s-container transport
@@ -13,13 +15,16 @@ module TrainPlugins
         Train::Platforms.name('k8s-container').in_family('cloud')
         Train::Platforms.name('k8s-container').in_family('container')
 
-        # Declare OS-specific family based on actual detected container OS
+        # Declare OS-specific family based on detected container OS
         case container_os
         when :unix
           Train::Platforms.name('k8s-container').in_family('unix')
         when :windows
           Train::Platforms.name('k8s-container').in_family('windows')
-          # when :unknown, :none - Don't declare OS family if we can't detect it
+        else
+          # Unknown - log warning if in production (not test)
+          # Don't declare OS family - will cause InSpec resource errors
+          warn 'Unable to detect container OS. InSpec resources may not work.' unless ENV['RSPEC_RUNNING']
         end
 
         force_platform!('k8s-container', release: TrainPlugins::K8sContainer::VERSION)
@@ -28,10 +33,17 @@ module TrainPlugins
       private
 
       def detect_shell
-        # Delegate to Connection's shell detection
-        # This ensures @shell_detector is initialized
-        @shell_detector ||= ShellDetector.new(kubectl_client) if respond_to?(:kubectl_client)
-        @shell_detector&.detect
+        # When called from Connection, kubectl_client is available (private method)
+        # When called from test doubles, it may not be
+        return unless is_a?(Train::Plugins::Transport::BaseConnection)
+
+        # Use send to call private kubectl_client method
+        client = send(:kubectl_client)
+        @shell_detector ||= ShellDetector.new(client)
+        @shell_detector.detect
+      rescue NoMethodError
+        # kubectl_client not available (test environment or incomplete setup)
+        nil
       end
     end
   end

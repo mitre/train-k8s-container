@@ -20,5 +20,10 @@ RSpec.configure do |config|
   # Tests can override by providing explicit logger
   config.before(:each) do
     @null_logger = Logger.new(IO::NULL)
+    ENV['RSPEC_RUNNING'] = 'true'
+  end
+
+  config.after(:each) do
+    ENV.delete('RSPEC_RUNNING')
   end
 end

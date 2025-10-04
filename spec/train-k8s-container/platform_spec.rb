@@ -44,10 +44,11 @@ RSpec.describe TrainPlugins::K8sContainer::Platform do
       expect(families).to include('container')
     end
 
-    it 'does not declare unix/windows family when container OS is unknown' do
+    it 'does not declare OS family when container OS is unknown' do
       # Without shell detection, container_os is unknown
-      # Platform should only have cloud and container families
+      # Platform should not declare unix or windows family
       families = subject.platform.families.keys.map(&:name)
+      expect(families).to include('cloud', 'container')
       expect(families).not_to include('unix')
       expect(families).not_to include('windows')
     end
