@@ -10,14 +10,7 @@ RSpec.describe TrainPlugins::K8sContainer::ShellDetector do
   describe '#detect' do
     context 'when bash is available' do
       before do
-        # Mock OS detection (detects Unix)
-        allow(kubectl_client).to receive(:execute_raw)
-          .with('echo test')
-          .and_return(double(stdout: 'test', stderr: '', exit_status: 0))
-        # Mock bash detection
-        allow(kubectl_client).to receive(:execute_raw)
-          .with('test -x /bin/bash && echo OK')
-          .and_return(double(stdout: 'OK', stderr: '', exit_status: 0))
+        mock_unix_container_with_bash(kubectl_client)
       end
 
       it 'detects bash' do
@@ -45,18 +38,7 @@ RSpec.describe TrainPlugins::K8sContainer::ShellDetector do
 
     context 'when only sh is available (Alpine)' do
       before do
-        # Mock OS detection (detects Unix)
-        allow(kubectl_client).to receive(:execute_raw)
-          .with('echo test')
-          .and_return(double(stdout: 'test', stderr: '', exit_status: 0))
-        # Mock shell detection - bash not available
-        allow(kubectl_client).to receive(:execute_raw)
-          .with('test -x /bin/bash && echo OK')
-          .and_return(double(stdout: '', stderr: '', exit_status: 1))
-        # Mock sh available
-        allow(kubectl_client).to receive(:execute_raw)
-          .with('test -x /bin/sh && echo OK')
-          .and_return(double(stdout: 'OK', stderr: '', exit_status: 0))
+        mock_unix_container_with_sh(kubectl_client)
       end
 
       it 'falls back to sh' do
@@ -71,21 +53,7 @@ RSpec.describe TrainPlugins::K8sContainer::ShellDetector do
 
     context 'when only ash is available (BusyBox)' do
       before do
-        # Mock OS detection (detects Unix)
-        allow(kubectl_client).to receive(:execute_raw)
-          .with('echo test')
-          .and_return(double(stdout: 'test', stderr: '', exit_status: 0))
-        # Mock shell detection - bash and sh not available
-        allow(kubectl_client).to receive(:execute_raw)
-          .with('test -x /bin/bash && echo OK')
-          .and_return(double(stdout: '', stderr: '', exit_status: 1))
-        allow(kubectl_client).to receive(:execute_raw)
-          .with('test -x /bin/sh && echo OK')
-          .and_return(double(stdout: '', stderr: '', exit_status: 1))
-        # Mock ash available
-        allow(kubectl_client).to receive(:execute_raw)
-          .with('test -x /bin/ash && echo OK')
-          .and_return(double(stdout: 'OK', stderr: '', exit_status: 0))
+        mock_unix_container_with_ash(kubectl_client)
       end
 
       it 'falls back to ash' do
@@ -100,14 +68,7 @@ RSpec.describe TrainPlugins::K8sContainer::ShellDetector do
 
     context 'when no shell is available (distroless)' do
       before do
-        # Mock OS detection (detects Unix but no shells)
-        allow(kubectl_client).to receive(:execute_raw)
-          .with('echo test')
-          .and_return(double(stdout: 'test', stderr: '', exit_status: 0))
-        # Mock all shell detection attempts fail
-        allow(kubectl_client).to receive(:execute_raw)
-          .with(/test -x/)
-          .and_return(double(stdout: '', stderr: '', exit_status: 1))
+        mock_distroless_container(kubectl_client)
       end
 
       it 'returns nil' do
@@ -127,8 +88,7 @@ RSpec.describe TrainPlugins::K8sContainer::ShellDetector do
 
     context 'when shell detection fails with exception' do
       before do
-        allow(kubectl_client).to receive(:execute_raw)
-          .and_raise(StandardError.new('Connection error'))
+        mock_shell_detection_error(kubectl_client)
       end
 
       it 'returns nil' do
@@ -138,14 +98,7 @@ RSpec.describe TrainPlugins::K8sContainer::ShellDetector do
 
     context 'when cmd.exe is available (Windows container)' do
       before do
-        # Mock OS detection (detects Windows via command failure)
-        allow(kubectl_client).to receive(:execute_raw)
-          .with('echo test')
-          .and_return(double(stdout: '', stderr: "'echo' is not recognized", exit_status: 1))
-        # Mock cmd.exe available (uses 'where' command for Windows)
-        allow(kubectl_client).to receive(:execute_raw)
-          .with('where cmd.exe')
-          .and_return(double(stdout: 'C:\\Windows\\System32\\cmd.exe', stderr: '', exit_status: 0))
+        mock_windows_container_with_cmd(kubectl_client)
       end
 
       it 'detects cmd.exe' do

@@ -15,49 +15,53 @@ RSpec.describe 'TrainPlugins::K8sContainer::KubectlExecClient Windows support' d
     )
   end
 
-  describe '#windows_shell?' do
+  describe '.windows_shell?' do
     it 'returns true for cmd.exe' do
-      expect(client.send(:windows_shell?, 'cmd.exe')).to be true
+      expect(TrainPlugins::K8sContainer::ShellDetector.windows_shell?('cmd.exe')).to be true
     end
 
     it 'returns true for powershell.exe' do
-      expect(client.send(:windows_shell?, 'powershell.exe')).to be true
+      expect(TrainPlugins::K8sContainer::ShellDetector.windows_shell?('powershell.exe')).to be true
     end
 
     it 'returns true for pwsh.exe' do
-      expect(client.send(:windows_shell?, 'pwsh.exe')).to be true
+      expect(TrainPlugins::K8sContainer::ShellDetector.windows_shell?('pwsh.exe')).to be true
     end
 
     it 'returns false for Unix shells' do
-      expect(client.send(:windows_shell?, '/bin/bash')).to be false
-      expect(client.send(:windows_shell?, '/bin/sh')).to be false
+      expect(TrainPlugins::K8sContainer::ShellDetector.windows_shell?('/bin/bash')).to be false
+      expect(TrainPlugins::K8sContainer::ShellDetector.windows_shell?('/bin/sh')).to be false
     end
   end
 
   describe '#build_windows_instruction' do
     it 'builds correct command for cmd.exe' do
-      instruction = client.send(:build_windows_instruction, 'cmd.exe', 'dir')
+      command_builder = client.instance_variable_get(:@command_builder)
+      instruction = command_builder.with_windows_shell('cmd.exe', 'dir')
       expect(instruction).to include('cmd.exe')
       expect(instruction).to include('/c')
       expect(instruction).to include('dir')
     end
 
     it 'builds correct command for powershell.exe' do
-      instruction = client.send(:build_windows_instruction, 'powershell.exe', 'Get-Process')
+      command_builder = client.instance_variable_get(:@command_builder)
+      instruction = command_builder.with_windows_shell('powershell.exe', 'Get-Process')
       expect(instruction).to include('powershell.exe')
       expect(instruction).to include('-Command')
       expect(instruction).to include('Get-Process')
     end
 
     it 'builds correct command for pwsh.exe' do
-      instruction = client.send(:build_windows_instruction, 'pwsh.exe', 'Get-ChildItem')
+      command_builder = client.instance_variable_get(:@command_builder)
+      instruction = command_builder.with_windows_shell('pwsh.exe', 'Get-ChildItem')
       expect(instruction).to include('pwsh.exe')
       expect(instruction).to include('-Command')
       expect(instruction).to include('Get-ChildItem')
     end
 
     it 'escapes commands with special characters' do
-      instruction = client.send(:build_windows_instruction, 'cmd.exe', 'echo "test & more"')
+      command_builder = client.instance_variable_get(:@command_builder)
+      instruction = command_builder.with_windows_shell('cmd.exe', 'echo "test & more"')
       # Shellwords.escape will handle the escaping
       expect(instruction).to include('cmd.exe')
       expect(instruction).to include('/c')

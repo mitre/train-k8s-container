@@ -37,28 +37,39 @@ RSpec.describe TrainPlugins::K8sContainer::Connection do
     end
   end
 
-  # context "when there is a server error" do
-  #   let(:options) { { pod: "shell-demo", container_name: "nginx", namespace: "de" } }
-  #   let(:stdout) { "" }
-  #   let(:stderr) { "Error from server (NotFound): namespaces \"de\" not found\n" }
-  #   let(:exitstatus) { 1 }
-
-  #   it "should raise Connection error from server" do
-  #     expect { subject }.to raise_error(TrainPlugins::K8sContainer::ConnectionError)
-  #       .with_message(/Error from server/)
-  #   end
-  # end
-
   describe '#file' do
-    let(:proc_version) do
-      "Linux version 6.5.11-linuxkit (root@buildkitsandbox) (gcc (Alpine 12.2.1_git20220924-r10) 12.2.1 20220924, GNU ld (GNU Binutils) 2.40) #1 SMP PREEMPT Wed Dec  6 17:08:31 UTC 2023\n"
+    context 'on Unix containers' do
+      let(:proc_version) do
+        'Linux version 6.5.11-linuxkit (root@buildkitsandbox) ' \
+          '(gcc (Alpine 12.2.1_git20220924-r10) 12.2.1 20220924, GNU ld (GNU Binutils) 2.40) ' \
+          "#1 SMP PREEMPT Wed Dec  6 17:08:31 UTC 2023\n"
+      end
+      let(:stdout) { proc_version }
+      before do
+        # Mock shell detection for file handler selection
+        mock_unix_container_with_bash(kube_client)
+        allow(kube_client).to receive(:execute).with('cat /proc/version || echo -n').and_return(shell_op)
+      end
+
+      it 'uses Train::File::Remote::Linux for Unix containers' do
+        file = subject.file('/proc/version')
+        expect(file).to be_a(Train::File::Remote::Linux)
+      end
+
+      it 'executes a file connection' do
+        expect(subject.file('/proc/version').content).to eq(stdout)
+      end
     end
-    let(:stdout) { proc_version }
-    before do
-      allow(kube_client).to receive(:execute).with('cat /proc/version || echo -n').and_return(shell_op)
-    end
-    it 'executes a file connection' do
-      expect(subject.file('/proc/version').content).to eq(stdout)
+
+    context 'on Windows containers' do
+      before do
+        mock_windows_container_with_cmd(kube_client)
+      end
+
+      it 'uses Train::File::Remote::Windows for Windows containers' do
+        file = subject.file('C:\\Windows\\System32\\config.ini')
+        expect(file).to be_a(Train::File::Remote::Windows)
+      end
     end
   end
 end

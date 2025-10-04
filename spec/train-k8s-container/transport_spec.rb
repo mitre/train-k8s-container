@@ -4,17 +4,9 @@ require_relative '../spec_helper'
 require 'train-k8s-container/transport'
 
 RSpec.describe TrainPlugins::K8sContainer::Transport do
-  # let(:platform_name) { Train::K8s::Container::Platform::PLATFORM_NAME }
   let(:options) { { pod: 'shell-demo', container_name: 'nginx', namespace: 'default' } }
   let(:kube_client) { double(TrainPlugins::K8sContainer::KubectlExecClient) }
   let(:shell_op) { Train::Extras::CommandResult.new(stdout, stderr, exitstatus) }
-
-  # describe ".name" do
-  #   it "registers the transport aginst the platform" do
-  #     expect(Train::Plugins.registry[platform_name]).to eq(described_class)
-  #   end
-  # end
-
   let(:stdout) { "Linux\n" }
   let(:stderr) { '' }
   let(:exitstatus) { 0 }
