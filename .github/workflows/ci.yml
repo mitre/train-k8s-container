@@ -126,13 +126,18 @@ jobs:
         env:
           KUBECONFIG: /home/runner/.kube/config
 
+      - name: Download gem artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: train-k8s-container-gem
+
       - name: Install InSpec
         uses: actionshub/chef-install@main
         with:
           project: inspec
 
-      - name: Install plugin via path (avoids gem dependency conflicts)
-        run: inspec plugin install ${{ github.workspace }}
+      - name: Install plugin from gem
+        run: inspec plugin install train-k8s-container-*.gem
 
       - name: Verify plugin installation
         run: inspec plugin list
