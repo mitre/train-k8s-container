@@ -26,7 +26,7 @@ module TrainPlugins
 
         # Extract from path or use explicit options
         host = !options[:host].nil? && !options[:host].empty? ? options[:host] : nil
-        @namespace = options[:namespace] || host || path_parts&.[](0) || TrainPlugins::K8sContainer::KubectlExecClient::DEFAULT_NAMESPACE
+        @namespace = options[:namespace] || host || path_parts&.first || TrainPlugins::K8sContainer::KubectlExecClient::DEFAULT_NAMESPACE
         @pod = options[:pod] || path_parts&.[](1)
         @container_name = options[:container_name] || path_parts&.[](2)
 

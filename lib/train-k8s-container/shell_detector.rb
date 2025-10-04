@@ -9,13 +9,13 @@ module TrainPlugins
         '/bin/bash',   # Ubuntu, Debian, RHEL, CentOS
         '/bin/sh',     # POSIX standard, symlink in most distros
         '/bin/ash',    # Alpine, BusyBox
-        '/bin/zsh' # Less common but possible
+        '/bin/zsh', # Less common but possible
       ].freeze
 
       WINDOWS_SHELLS = [
         'cmd.exe',           # Windows command prompt (most reliable)
         'powershell.exe',    # PowerShell 5.1 (Windows Server)
-        'pwsh.exe' # PowerShell Core 6+
+        'pwsh.exe', # PowerShell Core 6+
       ].freeze
 
       def initialize(kubectl_client)

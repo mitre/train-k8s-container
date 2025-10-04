@@ -53,7 +53,7 @@ module TrainPlugins
       def direct_binary(command)
         [
           *base_command,
-          '--'
+          '--',
         ].concat(command.split).join(' ')
       end
 

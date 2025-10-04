@@ -23,7 +23,7 @@ RSpec.describe 'End-to-End Integration', type: :integration do
       train = Train.create('k8s-container', {
                              pod: 'test-ubuntu',
                              container_name: 'test-ubuntu',
-                             namespace: 'default'
+                             namespace: 'default',
                            })
 
       expect(train).to be_a(TrainPlugins::K8sContainer::Transport)
@@ -34,7 +34,7 @@ RSpec.describe 'End-to-End Integration', type: :integration do
   describe 'Connection with URI' do
     it 'parses URI format correctly' do
       train = Train.create('k8s-container', {
-                             path: '/default/test-ubuntu/test-ubuntu'
+                             path: '/default/test-ubuntu/test-ubuntu',
                            })
 
       conn = train.connection
