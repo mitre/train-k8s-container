@@ -27,7 +27,11 @@ module TrainPlugins
       def get_session(session_key, kubectl_cmd:, shell: '/bin/bash', timeout: 300, logger: nil)
         @mutex.synchronize do
           unless @sessions[session_key]&.healthy?
-            cleanup_session(session_key) if @sessions[session_key]
+            # Cleanup old session if exists (must be done inside mutex, not via cleanup_session)
+            if @sessions[session_key]
+              old_session = @sessions.delete(session_key)
+              old_session&.cleanup
+            end
 
             logger&.debug("Creating new PTY session for #{session_key}")
             @sessions[session_key] = PtySession.new(
@@ -43,7 +47,8 @@ module TrainPlugins
           @sessions[session_key]
         end
       rescue PtySession::PtyError
-        cleanup_session(session_key)
+        # Cleanup without recursive mutex (already inside synchronize block)
+        @sessions.delete(session_key)
         raise
       end
 
