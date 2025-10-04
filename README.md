@@ -163,6 +163,114 @@ Bugs, typos, limitations, and frustrations are welcome to be reported through th
 
 You may also ask questions in the #inspec channel of the Chef Community Slack team.  However, for an issue to get traction, please report it as a github issue.
 
+## Testing
+
+### Running Tests
+
+The test suite includes unit tests, integration tests, and live tests:
+
+```bash
+# Run unit tests only (fast, no kubectl required)
+bundle exec rspec
+
+# Run unit tests with coverage report
+bundle exec rspec
+# Open coverage/index.html to view detailed report
+
+# Run integration tests (requires kind cluster with test pods)
+bundle exec rspec spec/integration
+
+# Run all tests (unit + integration)
+bundle exec rspec spec/train-k8s-container spec/integration
+
+# Run live tests (manual smoke testing)
+bundle exec ruby test/scripts/test_live.rb
+```
+
+**Test Coverage**: 96.22% (213 tests: 182 unit + 31 integration)
+
+### Setting Up Integration Testing with kind
+
+Integration tests require a Kubernetes cluster with test pods. We provide scripts for easy setup:
+
+```bash
+# Setup kind cluster with test pods
+./test/setup-kind.sh
+
+# Run integration tests
+bundle exec rspec spec/integration
+
+# Cleanup when done
+./test/cleanup-kind.sh
+# Or: kind delete cluster --name test-cluster
+```
+
+**Prerequisites**:
+- [kind](https://kind.sigs.k8s.io/) installed (`brew install kind`)
+- Docker running
+- kubectl installed
+
+**What the setup script does**:
+1. Creates kind cluster (Kubernetes v1.30.0)
+2. Deploys test-ubuntu (Ubuntu 22.04 with bash)
+3. Deploys test-alpine (Alpine 3.18 with ash/sh)
+4. Waits for pods to be ready
+5. Verifies kubectl exec works
+
+**Test pods run indefinitely** (`sleep infinity`) and can be used for multiple test runs.
+
+### Integration Test Structure
+
+```
+spec/
+├── train-k8s-container/     # Unit tests (182 tests, mocked)
+│   ├── connection_spec.rb
+│   ├── kubectl_exec_client_spec.rb
+│   ├── pty_session_spec.rb
+│   └── ...
+└── integration/              # Integration tests (31 tests, real kubectl)
+    ├── end_to_end_spec.rb           # Full workflow testing
+    ├── kubectl_exec_integration_spec.rb  # Real command execution
+    └── pty_session_integration_spec.rb   # Real PTY sessions
+```
+
+**Integration tests validate**:
+- Real kubectl exec behavior
+- Actual shell detection (bash, sh, ash)
+- PTY session pooling with real containers
+- Platform detection with real OS
+- File operations with real filesystems
+- Error handling with real kubectl errors
+
+### Quick Testing Commands
+
+```bash
+# Full quality check (style + unit tests + security)
+bundle exec rake quality
+
+# Just style/linting
+bundle exec rake style
+# Or: bundle exec rubocop
+
+# Just security scan
+bundle exec rake security
+
+# Just unit tests
+bundle exec rspec
+# Or: bundle exec rake spec
+```
+
+### CI/CD
+
+GitHub Actions automatically runs:
+- ✅ Unit tests on Ruby 3.3
+- ✅ Integration tests with kind (Kubernetes 1.29, 1.30, 1.31)
+- ✅ Code style checks (Cookstyle/RuboCop)
+- ✅ Security scans (bundler-audit, TruffleHog, SBOM)
+- ✅ Live testing (Direct Ruby + InSpec validation)
+
+See `.github/workflows/ci.yml` and `.github/workflows/security.yml` for details.
+
 ## Development on this Plugin
 
 ### Development Process
