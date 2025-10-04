@@ -96,11 +96,11 @@ jobs:
 
       - name: Create test pods
         run: |
-          # Ubuntu pod (bash)
-          kubectl run test-ubuntu --image=ubuntu:22.04 --restart=Never -- sleep 3600
+          # Ubuntu pod (bash) - sleep infinity so pods never complete
+          kubectl run test-ubuntu --image=ubuntu:22.04 --restart=Never -- sleep infinity
 
           # Alpine pod (ash/sh)
-          kubectl run test-alpine --image=alpine:3.18 --restart=Never -- sleep 3600
+          kubectl run test-alpine --image=alpine:3.18 --restart=Never -- sleep infinity
 
           # Wait for pods to be ready
           kubectl wait --for=condition=Ready pod/test-ubuntu --timeout=120s
@@ -123,6 +123,11 @@ jobs:
 
       - name: Test plugin with real pods (Direct Ruby)
         run: bundle exec ruby test/scripts/test_live.rb
+        env:
+          KUBECONFIG: /home/runner/.kube/config
+
+      - name: Run RSpec integration tests
+        run: bundle exec rspec spec/integration --format documentation
         env:
           KUBECONFIG: /home/runner/.kube/config
 
