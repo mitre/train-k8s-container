@@ -1,0 +1,44 @@
+# kind cluster configuration for train-k8s-container integration testing
+# Optimized for kubectl exec testing with proper resource management
+
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+
+# Single control-plane node (sufficient for testing)
+# Using Kubernetes v1.30.0 to match CI environment (tests v1.29-1.31)
+nodes:
+  - role: control-plane
+    # Pin to v1.30.0 to match CI kubectl version and middle of test range
+    image: kindest/node:v1.30.0@sha256:047357ac0cfea04663786a612ba1eaba9702bef25227a794b52890dd8bcd692e
+    # Allow pods to be scheduled on control plane (no taints)
+    kubeadmConfigPatches:
+      - |
+        kind: InitConfiguration
+        nodeRegistration:
+          kubeletExtraArgs:
+            node-labels: "ingress-ready=true"
+    extraPortMappings:
+      - containerPort: 80
+        hostPort: 80
+        protocol: TCP
+      - containerPort: 443
+        hostPort: 443
+        protocol: TCP
+
+# Networking configuration
+networking:
+  # Disable default CNI to avoid conflicts
+  disableDefaultCNI: false
+  # Use Kindnet (default, lightweight)
+  podSubnet: "10.244.0.0/16"
+  serviceSubnet: "10.96.0.0/12"
+
+# Feature gates (none needed for basic kubectl exec)
+featureGates: {}
+
+# Runtime configuration
+# containerd is the default runtime for kind
+containerdConfigPatches:
+  - |-
+    [plugins."io.containerd.grpc.v1.cri".registry.mirrors."localhost:5001"]
+      endpoint = ["http://kind-registry:5000"]

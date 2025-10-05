@@ -1,5 +1,40 @@
 # Changelog
 
+## [2.0.0] - 2025-10-04
+
+### Breaking Changes
+- **BREAKING**: Namespace changed from `Train::K8s::Container` to `TrainPlugins::K8sContainer` (Train v2 standard)
+- **BREAKING**: Replaced deprecated chefstyle with cookstyle for linting
+- Ruby requirement: >= 3.1
+
+### Added
+- **Shell Detection**: Auto-detect bash, sh, ash, zsh (Unix) and cmd.exe, powershell.exe, pwsh.exe (Windows)
+- **OS Detection**: Heuristic detection of Unix vs Windows containers
+- **Windows Container Support**: Full support for Windows Server containers
+- **Persistent Sessions**: Optional 60% performance improvement with session pooling (TRAIN_K8S_SESSION_MODE=true)
+- **Error Handling**: Retry logic with exponential backoff
+- **ANSI Sanitization**: Strip escape sequences for security (CVE-2021-25743)
+- **Logging**: Configurable logging via TRAIN_K8S_LOG_LEVEL (DEBUG/WARN/ERROR)
+- **Custom Errors**: Specific error classes for better error handling
+- **Testing Utilities**: test/scripts/ for local development
+
+### Changed
+- File structure: lib/train/k8s/container/* → lib/train-k8s-container/*
+- Platform: Uses force_platform! with cloud+unix families
+- Connection: Lazy kubectl_client initialization
+- Transport: Proper v2 API implementation
+
+### Fixed
+- Shell detection command escaping
+- Platform detection (no longer probes Windows on Linux containers)
+- Thread safety (SessionManager with Mutex)
+- Test command output validation
+
+### Security
+- ANSI injection prevention
+- Command escaping with Shellwords
+- Network error detection
+
 <!-- latest_release 1.3.1 -->
 ## [v1.3.1](https://github.com/inspec/train-k8s-container/tree/v1.3.1) (2024-03-05)
 

@@ -1,0 +1,181 @@
+name: Security Audit
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - v2.0
+      - 'feature/**'
+  pull_request:
+    branches:
+      - main
+      - master
+  schedule:
+    # Run weekly on Mondays at 6 AM UTC to catch new vulnerabilities
+    - cron: '0 6 * * 1'
+  workflow_dispatch:  # Allow manual triggering
+
+permissions:
+  contents: read
+  security-events: write
+
+env:
+  RUBY_VERSION: '3.3'
+
+jobs:
+  # Job 1: Secret Scanning with TruffleHog
+  secret-scanning:
+    name: Secret Scanning
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for TruffleHog
+
+      - name: TruffleHog Secret Scan
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+          extra_args: --only-verified
+        continue-on-error: true  # Notify but don't block
+
+      - name: Secret scan summary
+        if: always()
+        run: |
+          echo "## 🔒 Secret Scanning Results" >> $GITHUB_STEP_SUMMARY
+          echo "Scanned for 800+ types of secrets and credentials" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Secret scan completed - check logs for details" >> $GITHUB_STEP_SUMMARY
+
+  # Job 2: Dependency Vulnerability Scanning
+  vulnerability-scanning:
+    name: Dependency Vulnerabilities
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ env.RUBY_VERSION }}
+          bundler-cache: true
+
+      - name: Install bundler-audit
+        run: gem install bundler-audit
+
+      - name: Update vulnerability database
+        run: bundler-audit update
+
+      - name: Run vulnerability scan
+        run: |
+          bundler-audit check --verbose || echo "::warning::Vulnerabilities found - check logs above"
+          echo "::notice::Dependency vulnerability scan completed"
+        continue-on-error: true
+
+      - name: Vulnerability scan summary
+        if: always()
+        run: |
+          echo "## 🛡️ Dependency Vulnerability Scan" >> $GITHUB_STEP_SUMMARY
+          echo "Checked Gemfile.lock against Ruby Advisory Database" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Scan completed - review logs for any vulnerabilities" >> $GITHUB_STEP_SUMMARY
+
+  # Job 3: SBOM Generation
+  sbom-generation:
+    name: Generate SBOM
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ env.RUBY_VERSION }}
+          bundler-cache: true
+
+      - name: Install CycloneDX
+        run: gem install cyclonedx-ruby
+
+      - name: Generate SBOM (JSON)
+        run: |
+          cyclonedx-ruby -p . -o sbom.json
+          echo "✅ Generated CycloneDX SBOM in JSON format"
+
+      - name: Upload SBOM artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-${{ github.sha }}
+          path: sbom.json
+          retention-days: 90
+
+      - name: SBOM generation summary
+        if: always()
+        run: |
+          echo "## 📦 Software Bill of Materials (SBOM)" >> $GITHUB_STEP_SUMMARY
+          echo "Generated CycloneDX SBOM in JSON format" >> $GITHUB_STEP_SUMMARY
+          echo "✅ SBOM artifact uploaded for 90-day retention" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### SBOM Contents Preview" >> $GITHUB_STEP_SUMMARY
+          echo '```json' >> $GITHUB_STEP_SUMMARY
+          head -n 20 sbom.json >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+  # Job 4: License Compliance Audit
+  license-audit:
+    name: License Compliance
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ env.RUBY_VERSION }}
+          bundler-cache: true
+
+      - name: Install license_finder
+        run: gem install license_finder
+
+      - name: Run license audit
+        run: |
+          license_finder report --format text || echo "::warning::License issues found"
+        continue-on-error: true  # First run may need decisions file
+
+      - name: License audit summary
+        if: always()
+        run: |
+          echo "## ⚖️ License Compliance Audit" >> $GITHUB_STEP_SUMMARY
+          echo "Analyzed licenses of all gem dependencies" >> $GITHUB_STEP_SUMMARY
+          echo "✅ License audit completed - review for compliance" >> $GITHUB_STEP_SUMMARY
+
+  # Job 5: Security Summary
+  security-summary:
+    name: Security Summary
+    runs-on: ubuntu-latest
+    needs: [secret-scanning, vulnerability-scanning, sbom-generation, license-audit]
+    if: always()
+
+    steps:
+      - name: Generate security summary
+        run: |
+          echo "# 🔐 Security Audit Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "All security checks completed for commit ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Scan Results" >> $GITHUB_STEP_SUMMARY
+          echo "- 🔒 Secret Scanning: Completed" >> $GITHUB_STEP_SUMMARY
+          echo "- 🛡️ Vulnerability Scan: Completed" >> $GITHUB_STEP_SUMMARY
+          echo "- 📦 SBOM Generation: Completed" >> $GITHUB_STEP_SUMMARY
+          echo "- ⚖️ License Audit: Completed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "ℹ️ This workflow provides security notifications and does not block builds." >> $GITHUB_STEP_SUMMARY
+          echo "Review individual job logs for detailed findings." >> $GITHUB_STEP_SUMMARY

@@ -1,0 +1,43 @@
+AllCops:
+  TargetRubyVersion: 3.1  # Match gemspec minimum (InSpec 6.x embedded Ruby)
+  NewCops: enable
+  SuggestExtensions: false
+  Exclude:
+    - vendor/**/*
+
+# Naming/FileName - train-k8s-container.rb is correct gem convention
+Naming/FileName:
+  Enabled: false
+
+# Metrics - Transport plugins need larger classes for connection/platform management
+# Following InSpec ecosystem standard (train-kubernetes, inspec-aws disable these)
+Metrics/ClassLength:
+  Enabled: false  # InSpec plugins inherently have larger connection classes
+
+Metrics/ParameterLists:
+  Max: 7  # Ruby 3.1+ keyword arguments are self-documenting and preferred
+
+Metrics/AbcSize:
+  Enabled: false
+
+Metrics/CyclomaticComplexity:
+  Enabled: false
+
+Metrics/PerceivedComplexity:
+  Enabled: false
+
+Metrics/MethodLength:
+  Enabled: false
+
+# RSpec tests will have longer blocks - acceptable
+Metrics/BlockLength:
+  Exclude:
+    - spec/**/*_spec.rb
+
+# Allow reasonable line length (Chef standard is 150)
+Layout/LineLength:
+  Max: 150
+
+# Gemspec - Support Ruby >= 3.1 (InSpec 6.x) but develop on 3.3
+Gemspec/RequiredRubyVersion:
+  Enabled: false

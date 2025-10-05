@@ -3,6 +3,22 @@
 Gemfile.lock
 
 .byebug_history
+.rspec_status
+coverage/
+.coverage
 
 .ruby-version
 .ruby-gemset
+
+# Internal planning documents (keep local only)
+CLAUDE.md
+.claude/
+.context-trigger
+.archive/
+CONTEXT-RECOVERY.md
+*RESEARCH*.md
+*MODERNIZATION*.md
+*ANALYSIS*.md
+session.md
+recovery-prompt.md
+pr-summary.md
