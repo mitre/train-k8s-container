@@ -80,6 +80,10 @@ module TrainPlugins
       end
 
       def file_via_connection(path, *_args)
+        # Basic path traversal prevention
+        raise ArgumentError, 'File path cannot be nil' if path.nil?
+        raise ArgumentError, 'File path cannot be empty' if path.empty?
+
         # Detect container OS to use appropriate file handler
         detect_shell # Triggers OS detection in ShellDetector
         container_os = @shell_detector&.container_os || :unknown

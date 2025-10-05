@@ -38,6 +38,16 @@ RSpec.describe TrainPlugins::K8sContainer::Connection do
   end
 
   describe '#file' do
+    context 'path validation' do
+      it 'rejects nil path' do
+        expect { subject.file(nil) }.to raise_error(ArgumentError, /cannot be nil/)
+      end
+
+      it 'rejects empty path' do
+        expect { subject.file('') }.to raise_error(ArgumentError, /cannot be empty/)
+      end
+    end
+
     context 'on Unix containers' do
       let(:proc_version) do
         'Linux version 6.5.11-linuxkit (root@buildkitsandbox) ' \
