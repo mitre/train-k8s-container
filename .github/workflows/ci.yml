@@ -1,0 +1,167 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - v2.0
+      - 'feature/**'
+  pull_request:
+    branches: [main, master]
+
+env:
+  RUBY_VERSION_DEFAULT: '3.3'
+
+jobs:
+  # Job 1: Build gem (runs first, uploads artifact)
+  build-gem:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ env.RUBY_VERSION_DEFAULT }}
+
+      - name: Build gem
+        run: gem build train-k8s-container.gemspec
+
+      - name: Upload gem artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: train-k8s-container-gem
+          path: train-k8s-container-*.gem
+          retention-days: 5
+
+  # Job 2: Fast unit tests and linting (no Kubernetes needed)
+  unit-tests:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby-version: ['3.1', '3.2', '3.3']
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Ruby ${{ matrix.ruby-version }}
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby-version }}
+          bundler-cache: true
+
+      - name: Install dependencies
+        run: bundle install
+
+      - name: Run Cookstyle
+        run: bundle exec rake style
+
+      - name: Run unit tests
+        run: bundle exec rspec --format documentation
+
+  # Job 3: Integration tests with kind cluster
+  integration-tests:
+    runs-on: ubuntu-latest
+    needs: [build-gem, unit-tests]
+    env:
+      CHEF_LICENSE: accept-silent
+      CHEF_LICENSE_KEY: ${{ secrets.SAF_CHEF_LICENSE_KEY }}
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby-version: ['3.1', '3.2', '3.3']
+        k8s-version:
+          - v1.29.0
+          - v1.30.0
+          - v1.31.0
+
+    steps:
+      - name: Create kind cluster
+        uses: container-tools/kind-action@v2
+        with:
+          version: v0.20.0
+          kubectl_version: v1.30.0
+          cluster_name: test-cluster
+          wait: 60s
+
+      - name: Verify cluster
+        run: |
+          kubectl cluster-info
+          kubectl get nodes
+          kubectl version
+
+      - name: Create test pods
+        run: |
+          # Ubuntu pod (bash) - sleep infinity so pods never complete
+          kubectl run test-ubuntu --image=ubuntu:22.04 --restart=Never -- sleep infinity
+
+          # Alpine pod (ash/sh)
+          kubectl run test-alpine --image=alpine:3.18 --restart=Never -- sleep infinity
+
+          # Wait for pods to be ready
+          kubectl wait --for=condition=Ready pod/test-ubuntu --timeout=120s
+          kubectl wait --for=condition=Ready pod/test-alpine --timeout=120s
+
+          # Verify pods
+          kubectl get pods
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Ruby ${{ matrix.ruby-version }}
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby-version }}
+          bundler-cache: true
+
+      - name: Install dependencies
+        run: bundle install
+
+      - name: Test plugin with real pods (Direct Ruby)
+        run: bundle exec ruby test/scripts/test_live.rb
+        env:
+          KUBECONFIG: /home/runner/.kube/config
+
+      - name: Run RSpec integration tests
+        run: bundle exec rspec spec/integration --format documentation
+        env:
+          KUBECONFIG: /home/runner/.kube/config
+
+      - name: Download gem artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: train-k8s-container-gem
+
+      - name: Install InSpec
+        uses: actionshub/chef-install@main
+        with:
+          project: inspec
+
+      - name: Install plugin from gem
+        run: inspec plugin install train-k8s-container-*.gem
+
+      - name: Verify plugin installation
+        run: inspec plugin list
+
+      - name: Test with InSpec detect
+        run: inspec detect -t k8s-container:///test-ubuntu/test-ubuntu
+
+      - name: Test with InSpec shell
+        run: |
+          inspec shell -t k8s-container:///test-ubuntu/test-ubuntu --command "command('whoami').stdout"
+          inspec shell -t k8s-container:///test-alpine/test-alpine --command "command('cat /etc/alpine-release').stdout"
+
+      - name: Debug on failure
+        if: failure()
+        run: |
+          kubectl get pods -A
+          kubectl describe pod test-ubuntu
+          kubectl describe pod test-alpine
+          kubectl logs test-ubuntu || true
+          kubectl logs test-alpine || true
+
