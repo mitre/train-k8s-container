@@ -81,6 +81,10 @@ jobs:
           - v1.31.0
 
     steps:
+      - name: show kubeconfig
+        run: |
+          kubectl config view
+
       - name: Create kind cluster
         uses: container-tools/kind-action@v2
         with:
@@ -94,6 +98,7 @@ jobs:
           kubectl cluster-info
           kubectl get nodes
           kubectl version
+          kubectl config view
 
       - name: Create test pods
         run: |
@@ -126,6 +131,10 @@ jobs:
         run: bundle exec ruby test/scripts/test_live.rb
         env:
           KUBECONFIG: /home/runner/.kube/config
+
+      - name: show kubeconfig
+        run: |
+          kubectl config view          
 
       - name: Run RSpec integration tests
         run: bundle exec rspec spec/integration --format documentation
