@@ -89,7 +89,7 @@ jobs:
         uses: container-tools/kind-action@v2
         with:
           version: v0.20.0
-          kubectl_version: v1.30.0
+          kubectl_version: ${{ matrix['k8s-version'] }}
           cluster_name: test-cluster
           wait: 60s
 
