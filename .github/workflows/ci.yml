@@ -180,3 +180,6 @@ jobs:
           kubectl logs test-ubuntu || true
           kubectl logs test-alpine || true
 
+      - name: Show Pods
+        run: |
+          kubectl get pods
