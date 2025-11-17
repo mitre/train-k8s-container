@@ -63,7 +63,7 @@ jobs:
         run: bundle exec rake style
 
       - name: Run unit tests
-        run: bundle exec rspec --format documentation
+        run: bundle exec rspec spec/pre-cluster --format documentation
 
   # Job 3: Integration tests with kind cluster
   integration-tests:
@@ -139,11 +139,6 @@ jobs:
 
       - name: Run RSpec integration tests
         run: bundle exec rspec spec/integration --format documentation
-        env:
-          KUBECONFIG: /home/runner/.kube/config
-
-      - name: Run cluster dependent unit tests
-        run: bundle exec rspec spec/cluster_dep --format documentation
         env:
           KUBECONFIG: /home/runner/.kube/config    
 

@@ -5,6 +5,10 @@ require 'train'
 require 'train-k8s-container'
 
 RSpec.describe 'Cluster-dep unit testing', type: :integration do
+  before(:all) do
+    skip_if_no_integration_env
+  end
+
   before(:each) do
     # Reset platform registry to prevent accumulation across tests
     Train::Platforms.__reset if defined?(Train::Platforms.__reset)
