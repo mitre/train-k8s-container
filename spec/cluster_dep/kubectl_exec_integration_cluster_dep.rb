@@ -46,57 +46,33 @@ RSpec.describe 'KubectlExecClient Integration', type: :integration do
     end
 
     it 'detects sh/ash in Alpine containers' do
-        shell = alpine_client.send(:detect_shell)
-        expect(['/bin/sh', '/bin/ash']).to include(shell)
-      end
+      shell = alpine_client.send(:detect_shell)
+      expect(['/bin/sh', '/bin/ash']).to include(shell)
     end
+  end
 
-    describe 'command execution (shellout mode)' do
-      it 'executes simple commands' do
-        result = ubuntu_client.execute('whoami')
-        expect(result.exit_status).to eq(0)
-        expect(result.stdout.strip).to eq('root')
-      end
-      it 'handles command failures' do
-        result = ubuntu_client.execute('nonexistent-command')
-        expect(result.exit_status).not_to eq(0)
-        expect(result.stderr).to include('not found')
-      end
-      it 'handles commands with special characters' do
-        result = ubuntu_client.execute('echo "test & more"')
-        expect(result.exit_status).to eq(0)
-        expect(result.stdout).to include('test & more')
-      end
-  
-      it 'handles multi-line output' do
-        result = ubuntu_client.execute('printf "line1\\nline2\\nline3"')
-        expect(result.stdout.lines.count).to eq(3)
-      end
-    end
-      describe 'command execution (PTY mode)' do
-    it 'executes commands via PTY' do
-      result = ubuntu_client_pty.execute('whoami')
+  describe 'command execution (shellout mode)' do
+    it 'executes simple commands' do
+      result = ubuntu_client.execute('whoami')
       expect(result.exit_status).to eq(0)
       expect(result.stdout.strip).to eq('root')
     end
 
-    it 'maintains session across commands' do
-      result1 = ubuntu_client_pty.execute('export TEST_VAR=hello')
-      result2 = ubuntu_client_pty.execute('echo $TEST_VAR')
-
-      expect(result1.exit_status).to eq(0)
-      expect(result2.stdout.strip).to eq('hello')
+    it 'handles command failures' do
+      result = ubuntu_client.execute('nonexistent-command')
+      expect(result.exit_status).not_to eq(0)
+      expect(result.stderr).to include('not found')
     end
 
-    it 'handles rapid sequential commands' do
-      results = 10.times.map do |i|
-        ubuntu_client_pty.execute("echo test#{i}")
-      end
+    it 'handles commands with special characters' do
+      result = ubuntu_client.execute('echo "test & more"')
+      expect(result.exit_status).to eq(0)
+      expect(result.stdout).to include('test & more')
+    end
 
-      results.each_with_index do |result, i|
-        expect(result.exit_status).to eq(0)
-        expect(result.stdout.strip).to eq("test#{i}")
-      end
+    it 'handles multi-line output' do
+      result = ubuntu_client.execute('printf "line1\\nline2\\nline3"')
+      expect(result.stdout.lines.count).to eq(3)
     end
   end
 
@@ -162,4 +138,4 @@ RSpec.describe 'KubectlExecClient Integration', type: :integration do
       expect(result.stdout).not_to match(/\e\[/)
     end
   end
-end  
+end

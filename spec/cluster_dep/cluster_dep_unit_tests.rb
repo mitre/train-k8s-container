@@ -4,7 +4,7 @@ require_relative '../spec_helper'
 require 'train'
 require 'train-k8s-container'
 
-RSpec.describe 'Cluster Dependent Unit Tests', type: :integration do
+RSpec.describe 'Cluster-dep unit testing', type: :integration do
   before(:all) do
     skip_if_no_integration_env
   end
@@ -17,7 +17,6 @@ RSpec.describe 'Cluster Dependent Unit Tests', type: :integration do
   after(:each) do
     TrainPlugins::K8sContainer::SessionManager.instance.cleanup_all
   end
-
 
   describe 'Train.create factory' do
     it 'creates k8s-container connection via Train factory' do
@@ -73,23 +72,7 @@ RSpec.describe 'Cluster Dependent Unit Tests', type: :integration do
       expect(families).to include('unix')
     end
   end
-  
-  it 'checks file existence' do
-    file = conn.file('/etc/passwd')
-    expect(file.exist?).to be true
-  end
-  
-  it 'detects missing files' do
-    file = conn.file('/nonexistent/path')
-    expect(file.exist?).to be false
-  end
-  
-  it 'reads file content' do
-    file = conn.file('/etc/hostname')
-    expect(file.exist?).to be true
-    expect(file.content).not_to be_empty
-  end
-  
+
   describe 'File operations' do
     let(:conn) do
       TrainPlugins::K8sContainer::Connection.new(
@@ -99,12 +82,28 @@ RSpec.describe 'Cluster Dependent Unit Tests', type: :integration do
       )
     end
 
+    it 'checks file existence' do
+      file = conn.file('/etc/passwd')
+      expect(file.exist?).to be true
+    end
+
+    it 'detects missing files' do
+      file = conn.file('/nonexistent/path')
+      expect(file.exist?).to be false
+    end
+
+    it 'reads file content' do
+      file = conn.file('/etc/hostname')
+      expect(file.exist?).to be true
+      expect(file.content).not_to be_empty
+    end
+
     it 'uses correct file handler for Unix' do
       file = conn.file('/etc/passwd')
       expect(file).to be_a(Train::File::Remote::Linux)
     end
   end
-  
+
   describe 'Command execution with different shells' do
     it 'works with bash (Ubuntu)' do
       conn = TrainPlugins::K8sContainer::Connection.new(
@@ -128,7 +127,7 @@ RSpec.describe 'Cluster Dependent Unit Tests', type: :integration do
       expect(result.stdout.strip).to eq('test')
     end
   end
-  
+
   describe 'Session pooling performance' do
     it 'reuses sessions across multiple commands' do
       conn = TrainPlugins::K8sContainer::Connection.new(
@@ -147,4 +146,3 @@ RSpec.describe 'Cluster Dependent Unit Tests', type: :integration do
     end
   end
 end
-  
