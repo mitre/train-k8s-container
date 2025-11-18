@@ -178,3 +178,10 @@ jobs:
       - name: Show Pods
         run: |
           kubectl get pods
+
+      - name: Show Containers
+        run: |
+          kubectl get pods --all-namespaces -o jsonpath="{.items[*].spec['initContainers', 'containers'][*].image}" |\
+          tr -s '[[:space:]]' '\n' |\
+          sort |\
+          uniq -c
