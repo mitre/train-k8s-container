@@ -180,7 +180,7 @@ jobs:
         run: kubectl exec inspec-test-pod -c inspec-container -- gem list| grep inspec || echo "InSpec not installed"
 
       - name: Install plugin from gem
-        run: kubectl exec inspec-test-pod -c inspec-container -- inspec plugin install train-k8s-container-*.gem
+        run: kubectl exec inspec-test-pod -c inspec-container -- sh -c "export PATH=\$PATH:/usr/local/bundle/bin && inspec plugin install /train-k8s-container-*.gem"
 
       - name: Copy Inspec plugin to inspec-container
         run: kubectl cp train-k8s-container-*.gem inspec-test-pod:/train-k8s-container-*.gem -c inspec-container
@@ -189,7 +189,7 @@ jobs:
         run: kubectl exec inspec-test-pod -c inspec-container -- inspec plugin install /train-k8s-container-*.gem
 
       - name: Verify plugin installation
-        run: kubectl exec inspec-test-pod -c inspec-container -- inspec plugin list
+        run: kubectl exec inspec-test-pod -c inspec-container -- sh -c "export PATH=\$PATH:/usr/local/bundle/bin && inspec version"
 
       - name: Test with InSpec detect
         run: inspec detect -t k8s-container:///test-ubuntu/test-ubuntu
