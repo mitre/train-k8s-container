@@ -121,7 +121,7 @@ jobs:
               image: ruby:3.3
               command: ["sleep", "infinity"]
             - name: target-container
-              image: nginx:1.25
+              image: alpine:3.18
               command: ["sleep", "infinity"]
           EOF
 
@@ -145,6 +145,9 @@ jobs:
 
       - name: Install dependencies
         run: bundle install
+      
+      - name: Verify Ruby in Container
+        run: kubectl exec inspec-test-pod -c inspec-container -- ruby && gem -v
 
       - name: Test plugin with real pods (Direct Ruby)
         run: bundle exec ruby test/scripts/test_live.rb
@@ -172,6 +175,9 @@ jobs:
 
       - name: Install InSpec in Container
         run: kubectl exec inspec-test-pod -c inspec-container -- gem install inspec
+
+      - name: Verify InSpec install in container
+        run: kubectl exec inspec-test-pod -c inspec-container -- gem list| grep inspec || echo "InSpec not installed"
 
       - name: Install plugin from gem
         run: kubectl exec inspec-test-pod -c inspec-container -- inspec plugin install train-k8s-container-*.gem
