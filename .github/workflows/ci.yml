@@ -109,9 +109,27 @@ jobs:
           # Alpine pod (ash/sh)
           kubectl run test-alpine --image=alpine:3.18 --restart=Never -- sleep infinity
 
+          # Test pod with two containers
+          kubectl apply -f - <<EOF
+          apiVersion: v1
+          kind: Pod
+          metadata:
+            name: inspec-test-pod
+          spec:
+            containers
+            - name: inspec-container
+              image: ruby:3.3
+              command: ["sleep", "infinity"]
+            - name: target-container
+              image:nginx:1.25
+              command: ["sleep", "infinity"]
+          EOF      
+
+
           # Wait for pods to be ready
           kubectl wait --for=condition=Ready pod/test-ubuntu --timeout=120s
           kubectl wait --for=condition=Ready pod/test-alpine --timeout=120s
+          kubectl wait --for=condition=Ready pod/inspec-test-pod --timeout=120s
 
           # Verify pods
           kubectl get pods
@@ -152,11 +170,20 @@ jobs:
         with:
           project: inspec
 
+      - name: Install InSpec in Container
+        run: kubectl exec inspec-test-pod -c inspec-container -- gem install inspec
+
       - name: Install plugin from gem
-        run: inspec plugin install train-k8s-container-*.gem
+        run: exec inspec-test-pod -c inspec-container -- inspec plugin install train-k8s-container-*.gem
+
+      - name: Copy Inspec plugin to inspec-container
+        run: kubectl cp train-k8s-container-*.gem inspec-test-pod:/train-k8s-container-*.gem -c inspec-container
+
+      - name: Install InSpec plugin in inspec-container
+        run: kubectl exec inspec-test-pod -c inspec-container -- inspec plugin install /train-k8s-container-*.gem
 
       - name: Verify plugin installation
-        run: inspec plugin list
+        run: kubectl exec inspec-test-pod -c inspec-container -- inspec plugin list
 
       - name: Test with InSpec detect
         run: inspec detect -t k8s-container:///test-ubuntu/test-ubuntu
@@ -165,6 +192,10 @@ jobs:
         run: |
           inspec shell -t k8s-container:///test-ubuntu/test-ubuntu --command "command('whoami').stdout"
           inspec shell -t k8s-container:///test-alpine/test-alpine --command "command('cat /etc/alpine-release').stdout"
+      
+      - name: Run InSpec scan from inspec-container
+        run: kubectl exec inspec-test-pod -c inspec-container -- inspec detect -t k8s-container:///inspec-test-pod/container-two
+          
 
       - name: Debug on failure
         if: failure()
@@ -172,8 +203,10 @@ jobs:
           kubectl get pods -A
           kubectl describe pod test-ubuntu
           kubectl describe pod test-alpine
+          kubectl describe pod inspec-test-pod
           kubectl logs test-ubuntu || true
           kubectl logs test-alpine || true
+          kubectl logs inspec-test-pod || true
 
       - name: Show Pods
         run: |
