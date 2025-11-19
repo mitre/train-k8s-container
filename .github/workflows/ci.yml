@@ -167,6 +167,8 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: train-k8s-container-gem
+      - name: Install plugin from gem in inspec-container
+        run: kubectl exec inspec-test-pod -c inspec-container -- sh -c "export PATH=\$PATH:/usr/local/bundle/bin && inspec plugin install /train-k8s-container-*.gem"
 
       - name: Install InSpec
         uses: actionshub/chef-install@main
@@ -178,6 +180,9 @@ jobs:
 
       - name: Verify InSpec install in container
         run: kubectl exec inspec-test-pod -c inspec-container -- gem list| grep inspec || echo "InSpec not installed"
+      
+      - name: Verify InSpec command in container
+        run: kubectl exec inspec-test-pod -c inspec-container -- sh -c "export PATH=\$PATH:/usr/local/bundle/bin && inspec version"
       
       - name: Verify gem path
         run: kubectl exec inspec-test-pod -c inspec-container -- gem env
