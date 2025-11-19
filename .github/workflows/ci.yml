@@ -116,14 +116,14 @@ jobs:
           metadata:
             name: inspec-test-pod
           spec:
-            containers
+            containers:
             - name: inspec-container
               image: ruby:3.3
               command: ["sleep", "infinity"]
             - name: target-container
-              image:nginx:1.25
+              image: nginx:1.25
               command: ["sleep", "infinity"]
-          EOF      
+          EOF
 
 
           # Wait for pods to be ready
