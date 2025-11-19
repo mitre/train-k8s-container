@@ -174,7 +174,7 @@ jobs:
         run: kubectl exec inspec-test-pod -c inspec-container -- gem install inspec
 
       - name: Install plugin from gem
-        run: exec inspec-test-pod -c inspec-container -- inspec plugin install train-k8s-container-*.gem
+        run: kubectl exec inspec-test-pod -c inspec-container -- inspec plugin install train-k8s-container-*.gem
 
       - name: Copy Inspec plugin to inspec-container
         run: kubectl cp train-k8s-container-*.gem inspec-test-pod:/train-k8s-container-*.gem -c inspec-container
