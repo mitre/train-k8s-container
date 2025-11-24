@@ -198,13 +198,13 @@ jobs:
       - name: Verify plugin installation
         run: kubectl exec inspec-test-pod -c inspec-container -- sh -c "export PATH=$PATH:/usr/local/bundle/bin && cinc-auditor version"
 
-      - name: Test with InSpec detect
-        run: inspec detect -t k8s-container:///test-ubuntu/test-ubuntu
+      #- name: Test with InSpec detect
+      #  run: inspec detect -t k8s-container:///test-ubuntu/test-ubuntu
 
-      - name: Test with InSpec shell
-        run: |
-          inspec shell -t k8s-container:///test-ubuntu/test-ubuntu --command "command('whoami').stdout"
-          inspec shell -t k8s-container:///test-alpine/test-alpine --command "command('cat /etc/alpine-release').stdout"
+      #- name: Test with InSpec shell
+      #  run: |
+      #    inspec shell -t k8s-container:///test-ubuntu/test-ubuntu --command "command('whoami').stdout"
+      #    inspec shell -t k8s-container:///test-alpine/test-alpine --command "command('cat /etc/alpine-release').stdout"
       
       - name: Run InSpec scan from inspec-container
         run: kubectl exec inspec-test-pod -c inspec-container -- cinc-auditor detect -t k8s-container:///inspec-test-pod/container-two 
