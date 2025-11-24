@@ -195,9 +195,6 @@ jobs:
       - name: Install plugin from gem
         run: kubectl exec inspec-test-pod -c inspec-container -- sh -c "export PATH=$PATH:/usr/local/bundle/bin && cinc-auditor plugin install /train-k8s-container-*.gem"
 
-      - name: Install InSpec plugin in inspec-container
-        run: kubectl exec inspec-test-pod -c inspec-container -- cinc-auditor plugin install /train-k8s-container-*.gem
-
       - name: Verify plugin installation
         run: kubectl exec inspec-test-pod -c inspec-container -- sh -c "export PATH=$PATH:/usr/local/bundle/bin && cinc-auditor version"
 
