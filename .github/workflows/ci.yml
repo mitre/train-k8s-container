@@ -12,7 +12,7 @@ on:
     branches: [main, master]
 
 env:
-  RUBY_VERSION_DEFAULT: '3.3'
+  RUBY_VERSION_DEFAULT: '3.4'
 
 jobs:
   # Job 1: Build gem (runs first, uploads artifact)
@@ -44,7 +44,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ruby-version: ['3.1', '3.2', '3.3']
+        ruby-version: ['3.1', '3.2', '3.3', '3.4']
 
     steps:
       - name: Checkout code
@@ -75,7 +75,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ruby-version: ['3.1', '3.2', '3.3']
+        ruby-version: ['3.1', '3.2', '3.3', '3.4']
         k8s-version:
           - v1.29.0
           - v1.30.0
@@ -118,10 +118,10 @@ jobs:
           spec:
             containers:
             - name: inspec-container
-              image: ruby:3.3
+              image: ruby:${{ env.RUBY_VERSION_DEFAULT }}
               command: ["sleep", "infinity"]
             - name: target-container
-              image: alpine:3.18
+              image: ubuntu:22.04
               command: ["sleep", "infinity"]
           EOF
 
@@ -181,10 +181,10 @@ jobs:
         run: kubectl exec inspec-test-pod -c inspec-container -- gem install inspec
 
       - name: Verify InSpec install in container
-        run: kubectl exec inspec-test-pod -c inspec-container -- gem list| grep inspec || echo "InSpec not installed"
+        run: kubectl exec inspec-test-pod -c inspec-container -- gem list | grep inspec || echo "InSpec not installed"
       
       - name: Verify InSpec command in container
-        run: kubectl exec inspec-test-pod -c inspec-container -- sh -c "export PATH=\$PATH:/usr/local/bundle/bin && inspec version"
+        run: kubectl exec inspec-test-pod -c inspec-container -- sh -c "export PATH=$PATH:/usr/local/bundle/bin && inspec version"
       
       - name: Verify gem path
         run: kubectl exec inspec-test-pod -c inspec-container -- gem env
@@ -193,13 +193,13 @@ jobs:
         run: kubectl cp train-k8s-container-*.gem inspec-test-pod:/train-k8s-container-*.gem -c inspec-container
 
       - name: Install plugin from gem
-        run: kubectl exec inspec-test-pod -c inspec-container -- sh -c "export PATH=\$PATH:/usr/local/bundle/bin && inspec plugin install /train-k8s-container-*.gem"
+        run: kubectl exec inspec-test-pod -c inspec-container -- sh -c "export PATH=$PATH:/usr/local/bundle/bin && inspec plugin install /train-k8s-container-*.gem"
 
       - name: Install InSpec plugin in inspec-container
         run: kubectl exec inspec-test-pod -c inspec-container -- inspec plugin install /train-k8s-container-*.gem
 
       - name: Verify plugin installation
-        run: kubectl exec inspec-test-pod -c inspec-container -- sh -c "export PATH=\$PATH:/usr/local/bundle/bin && inspec version"
+        run: kubectl exec inspec-test-pod -c inspec-container -- sh -c "export PATH=$PATH:/usr/local/bundle/bin && inspec version"
 
       - name: Test with InSpec detect
         run: inspec detect -t k8s-container:///test-ubuntu/test-ubuntu
