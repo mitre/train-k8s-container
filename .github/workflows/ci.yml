@@ -178,13 +178,13 @@ jobs:
           project: inspec
 
       - name: Install InSpec in Container
-        run: kubectl exec inspec-test-pod -c inspec-container -- gem install inspec
+        run: kubectl exec inspec-test-pod -c inspec-container -- gem install cinc-auditor-bin --clear-sources -s https://rubygems.cinc.sh -s https://rubygems.org
 
       - name: Verify InSpec install in container
-        run: kubectl exec inspec-test-pod -c inspec-container -- gem list | grep inspec || echo "InSpec not installed"
+        run: kubectl exec inspec-test-pod -c inspec-container -- gem list | grep cinc-auditor-bin || echo "cinc-auditor not installed"
       
       - name: Verify InSpec command in container
-        run: kubectl exec inspec-test-pod -c inspec-container -- sh -c "export PATH=$PATH:/usr/local/bundle/bin && inspec version"
+        run: kubectl exec inspec-test-pod -c inspec-container -- sh -c "export PATH=$PATH:/usr/local/bundle/bin && cinc-auditor version"
       
       - name: Verify gem path
         run: kubectl exec inspec-test-pod -c inspec-container -- gem env
@@ -193,13 +193,13 @@ jobs:
         run: kubectl cp train-k8s-container-*.gem inspec-test-pod:/train-k8s-container-*.gem -c inspec-container
 
       - name: Install plugin from gem
-        run: kubectl exec inspec-test-pod -c inspec-container -- sh -c "export PATH=$PATH:/usr/local/bundle/bin && inspec plugin install /train-k8s-container-*.gem"
+        run: kubectl exec inspec-test-pod -c inspec-container -- sh -c "export PATH=$PATH:/usr/local/bundle/bin && cinc-auditor plugin install /train-k8s-container-*.gem"
 
       - name: Install InSpec plugin in inspec-container
-        run: kubectl exec inspec-test-pod -c inspec-container -- inspec plugin install /train-k8s-container-*.gem
+        run: kubectl exec inspec-test-pod -c inspec-container -- cinc-auditor plugin install /train-k8s-container-*.gem
 
       - name: Verify plugin installation
-        run: kubectl exec inspec-test-pod -c inspec-container -- sh -c "export PATH=$PATH:/usr/local/bundle/bin && inspec version"
+        run: kubectl exec inspec-test-pod -c inspec-container -- sh -c "export PATH=$PATH:/usr/local/bundle/bin && cinc-auditor version"
 
       - name: Test with InSpec detect
         run: inspec detect -t k8s-container:///test-ubuntu/test-ubuntu
@@ -210,8 +210,7 @@ jobs:
           inspec shell -t k8s-container:///test-alpine/test-alpine --command "command('cat /etc/alpine-release').stdout"
       
       - name: Run InSpec scan from inspec-container
-        run: kubectl exec inspec-test-pod -c inspec-container -- inspec detect -t k8s-container:///inspec-test-pod/container-two
-          
+        run: kubectl exec inspec-test-pod -c inspec-container -- cinc-auditor detect -t k8s-container:///inspec-test-pod/container-two 
 
       - name: Debug on failure
         if: failure()
