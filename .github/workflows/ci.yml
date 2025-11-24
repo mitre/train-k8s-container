@@ -207,7 +207,7 @@ jobs:
       #    inspec shell -t k8s-container:///test-alpine/test-alpine --command "command('cat /etc/alpine-release').stdout"
       
       - name: Run InSpec scan from inspec-container
-        run: kubectl exec inspec-test-pod -c inspec-container -- cinc-auditor exec -t k8s-container:///inspec-test-pod/target-container
+        run: kubectl exec inspec-test-pod -c inspec-container -- cinc-auditor exec https://github.com/mitre/canonical-ubuntu-22.04-lts-stig-baseline -t k8s-container:///inspec-test-pod/target-container
 
       - name: Debug on failure
         if: failure()
