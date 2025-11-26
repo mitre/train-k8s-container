@@ -177,9 +177,6 @@ jobs:
         with:
           project: inspec
 
-      - name: Add Bash to Target Container
-        run: kubectl exec inspec-test-pod -c target-container --user=root -- apt-get update && apt-get install -y bash
-
       - name: Install InSpec in Container
         run: kubectl exec inspec-test-pod -c inspec-container -- gem install cinc-auditor-bin --clear-sources -s https://rubygems.cinc.sh -s https://rubygems.org
 
