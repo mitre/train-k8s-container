@@ -168,9 +168,11 @@ jobs:
         with:
           name: train-k8s-container-gem
 
+      - name: Install InSpec plugin
+        run: inspec plugin install train-k8s-container-gem
+
       - name: Copy gem file to inspec-container
-        run: |
-          kubectl cp train-k8s-container-*.gem inspec-test-pod:/train-k8s-container-*.gem -c inspec-container
+        run: kubectl cp train-k8s-container-*.gem inspec-test-pod:/train-k8s-container-*.gem -c inspec-container
 
       - name: Install InSpec
         uses: actionshub/chef-install@main
@@ -188,9 +190,6 @@ jobs:
       
       - name: Verify gem path
         run: kubectl exec inspec-test-pod -c inspec-container -- gem env
-
-      - name: Copy Inspec plugin to inspec-container
-        run: kubectl cp train-k8s-container-*.gem inspec-test-pod:/train-k8s-container-*.gem -c inspec-container
 
       - name: Install plugin from gem
         run: kubectl exec inspec-test-pod -c inspec-container -- sh -c "export PATH=$PATH:/usr/local/bundle/bin && cinc-auditor plugin install /train-k8s-container-*.gem"
