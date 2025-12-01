@@ -177,7 +177,7 @@ jobs:
           project: inspec
 
       - name: Install InSpec plugin
-        run: inspec plugin install train-k8s-container-gem
+        run: inspec plugin install install ./train-k8s-container-*.gem"
 
       - name: Install InSpec in Container
         run: kubectl exec inspec-test-pod -c inspec-container -- gem install cinc-auditor-bin --clear-sources -s https://rubygems.cinc.sh -s https://rubygems.org
