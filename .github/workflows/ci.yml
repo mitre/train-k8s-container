@@ -168,9 +168,6 @@ jobs:
         with:
           name: train-k8s-container-gem
 
-      - name: Install InSpec plugin
-        run: inspec plugin install train-k8s-container-gem
-
       - name: Copy gem file to inspec-container
         run: kubectl cp train-k8s-container-*.gem inspec-test-pod:/train-k8s-container-*.gem -c inspec-container
 
@@ -178,6 +175,9 @@ jobs:
         uses: actionshub/chef-install@main
         with:
           project: inspec
+
+      - name: Install InSpec plugin
+        run: inspec plugin install train-k8s-container-gem
 
       - name: Install InSpec in Container
         run: kubectl exec inspec-test-pod -c inspec-container -- gem install cinc-auditor-bin --clear-sources -s https://rubygems.cinc.sh -s https://rubygems.org
