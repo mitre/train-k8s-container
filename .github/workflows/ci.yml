@@ -205,10 +205,10 @@ jobs:
       #  run: |
       #    inspec shell -t k8s-container:///test-ubuntu/test-ubuntu --command "command('whoami').stdout"
       #    inspec shell -t k8s-container:///test-alpine/test-alpine --command "command('cat /etc/alpine-release').stdout"
-
-      - name: Add Bash to Target Container
-        run: kubectl exec inspec-test-pod -c target-container -- sudo apt-get update && apt-get install -y bash
       
+      - name: Run InSpec scan from outside container
+        run: inspec exec https://github.com/mitre/canonical-ubuntu-22.04-lts-stig-baseline/archive/refs/heads/Container-test.tar.gz -t k8s-container:///inspec-test-pod/target-container
+
       - name: Run InSpec scan from inspec-container
         run: kubectl exec inspec-test-pod -c inspec-container -- cinc-auditor exec https://github.com/mitre/canonical-ubuntu-22.04-lts-stig-baseline/archive/refs/heads/Container-test.tar.gz -t k8s-container:///inspec-test-pod/target-container
 
