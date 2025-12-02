@@ -121,7 +121,7 @@ jobs:
               image: ruby:${{ env.RUBY_VERSION_DEFAULT }}
               command: ["sleep", "infinity"]
             - name: target-container
-              image: ubuntu:20.04
+              image: ubuntu:22.04
               command: ["sleep", "infinity"]
           EOF
 
