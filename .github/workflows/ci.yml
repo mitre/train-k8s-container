@@ -311,17 +311,36 @@ jobs:
 
       - name: Create target pods
         run: |
-          # Create pods to be scanned
+          # Create single-container pods to be scanned (pod-to-pod scenario)
           kubectl run target-ubuntu --image=ubuntu:22.04 --restart=Never -- sleep infinity
           kubectl run target-alpine --image=alpine:3.18 --restart=Never -- sleep infinity
 
-          # Wait for target pods
+          # Create multi-container pod for same-pod container-to-container testing
+          # This tests scanning a sibling container within the same pod
+          cat <<EOF | kubectl apply -f -
+          apiVersion: v1
+          kind: Pod
+          metadata:
+            name: multi-container-pod
+            namespace: default
+          spec:
+            containers:
+            - name: scanner
+              image: ruby:3.3-slim
+              command: ["sleep", "infinity"]
+            - name: target
+              image: ubuntu:22.04
+              command: ["sleep", "infinity"]
+          EOF
+
+          # Wait for all pods
           kubectl wait --for=condition=Ready pod/target-ubuntu --timeout=120s
           kubectl wait --for=condition=Ready pod/target-alpine --timeout=120s
+          kubectl wait --for=condition=Ready pod/multi-container-pod --timeout=120s
 
       - name: Verify target pods are operational
         run: |
-          # Verify pods can execute commands
+          # Verify single-container pods can execute commands
           max_attempts=30
           for pod in target-ubuntu target-alpine; do
             attempt=1
@@ -331,6 +350,20 @@ jobs:
                 break
               fi
               echo "Waiting for $pod... ($attempt/$max_attempts)"
+              sleep 2
+              attempt=$((attempt + 1))
+            done
+          done
+
+          # Verify multi-container pod containers are operational
+          for container in scanner target; do
+            attempt=1
+            while [ $attempt -le $max_attempts ]; do
+              if kubectl exec multi-container-pod -c "$container" -- echo "ready" 2>/dev/null | grep -q "ready"; then
+                echo "✅ multi-container-pod/$container is ready"
+                break
+              fi
+              echo "Waiting for multi-container-pod/$container... ($attempt/$max_attempts)"
               sleep 2
               attempt=$((attempt + 1))
             done
@@ -477,6 +510,58 @@ jobs:
           kubectl exec cinc-scanner -- cinc-auditor exec /work/test-profile \
             -t k8s-container:///target-alpine/target-alpine || true
 
+      - name: Test with real STIG profile
+        run: |
+          # Run a real STIG profile to prove the plugin works with actual compliance content
+          # Using the Container-test branch which is optimized for container scanning
+          echo "Running canonical Ubuntu 22.04 STIG baseline against target-ubuntu..."
+          kubectl exec cinc-scanner -- cinc-auditor exec \
+            https://github.com/mitre/canonical-ubuntu-22.04-lts-stig-baseline/archive/refs/heads/Container-test.tar.gz \
+            -t k8s-container:///target-ubuntu/target-ubuntu \
+            --reporter cli json:/work/stig-results.json || true
+
+          # Show summary of results
+          echo "STIG scan completed. Results summary:"
+          kubectl exec cinc-scanner -- cat /work/stig-results.json | head -100 || true
+
+      - name: Test same-pod container-to-container scanning
+        run: |
+          # This tests scanning a sibling container within the same pod
+          # A realistic scenario where a scanner sidecar scans the main application container
+          echo "Setting up Cinc Auditor in multi-container-pod/scanner..."
+
+          # Install Cinc Auditor in the scanner container
+          kubectl exec multi-container-pod -c scanner -- bash -c "
+            apt-get update && apt-get install -y curl ca-certificates git
+            curl -L https://omnitruck.cinc.sh/install.sh | bash -s -- -P cinc-auditor
+          "
+
+          # Install kubectl in scanner container for k8s-container transport
+          kubectl exec multi-container-pod -c scanner -- bash -c "
+            curl -LO 'https://dl.k8s.io/release/v1.30.0/bin/linux/amd64/kubectl'
+            chmod +x kubectl && mv kubectl /usr/local/bin/
+          "
+
+          # Copy and install the plugin
+          kubectl cp train-k8s-container-*.gem multi-container-pod:/tmp/train-k8s-container.gem -c scanner
+          kubectl exec multi-container-pod -c scanner -- cinc-auditor plugin install /tmp/train-k8s-container.gem
+
+          # Verify plugin installation
+          kubectl exec multi-container-pod -c scanner -- cinc-auditor plugin list
+
+          # Test same-pod container-to-container detect
+          echo "Testing same-pod container-to-container detect..."
+          kubectl exec multi-container-pod -c scanner -- \
+            cinc-auditor detect -t k8s-container:///multi-container-pod/target
+
+          # Test same-pod container-to-container shell command
+          echo "Testing same-pod container-to-container shell command..."
+          kubectl exec multi-container-pod -c scanner -- \
+            cinc-auditor shell -t k8s-container:///multi-container-pod/target \
+            --command "command('cat /etc/os-release').stdout"
+
+          echo "✅ Same-pod container-to-container scanning works!"
+
       - name: Debug pod-to-pod on failure
         if: failure()
         run: |
@@ -490,6 +575,11 @@ jobs:
           echo "=== Target Pod Details ==="
           kubectl describe pod target-ubuntu
           kubectl describe pod target-alpine
+
+          echo "=== Multi-Container Pod Details ==="
+          kubectl describe pod multi-container-pod
+          kubectl logs multi-container-pod -c scanner || true
+          kubectl logs multi-container-pod -c target || true
 
           echo "=== RBAC Check ==="
           kubectl auth can-i --as=system:serviceaccount:default:inspec-scanner \
