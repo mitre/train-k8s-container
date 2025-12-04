@@ -543,7 +543,11 @@ jobs:
           "
 
           # Copy and install the plugin
-          kubectl cp train-k8s-container-*.gem multi-container-pod:/tmp/train-k8s-container.gem -c scanner
+          # Note: kubectl cp doesn't support globs, so we find the exact filename first
+          GEM_FILE=$(ls train-k8s-container-*.gem)
+          echo "Copying $GEM_FILE to scanner container..."
+          kubectl cp "$GEM_FILE" multi-container-pod:/tmp/train-k8s-container.gem -c scanner
+          kubectl exec multi-container-pod -c scanner -- ls -la /tmp/train-k8s-container.gem
           kubectl exec multi-container-pod -c scanner -- cinc-auditor plugin install /tmp/train-k8s-container.gem
 
           # Verify plugin installation
