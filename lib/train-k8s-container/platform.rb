@@ -20,7 +20,13 @@ module TrainPlugins
 
         # Use Train's built-in platform detection scanner
         # This reads /etc/os-release, /etc/redhat-release, etc. to detect the OS
-        @platform = Train::Platforms::Detect.scan(self)
+        # Train raises PlatformDetectionFailed if it can't detect the platform
+        begin
+          @platform = Train::Platforms::Detect.scan(self)
+        rescue Train::PlatformDetectionFailed
+          # Fall back to unknown platform for distroless/minimal containers
+          @platform = nil
+        end
 
         # If detection fails, fall back to a generic unix platform
         # This handles distroless containers where OS detection may fail

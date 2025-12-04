@@ -224,4 +224,56 @@ RSpec.describe TrainPlugins::K8sContainer::Platform do
       expect(hierarchy).to include('os')
     end
   end
+
+  describe 'distroless container fallback' do
+    before do
+      Train::Platforms.__reset
+    end
+
+    # Helper to mock a distroless container where all detection commands fail
+    # Distroless containers have no shell, so most commands return errors
+    def mock_distroless_detection(connection)
+      connection.command_results = {
+        # Windows detection (must fail)
+        'cmd.exe /c ver' => Train::Extras::CommandResult.new('', 'not found', 1),
+        'Get-WmiObject Win32_OperatingSystem | Select Caption,Version | ConvertTo-Json' =>
+          Train::Extras::CommandResult.new('', 'not found', 1),
+        'show version' => Train::Extras::CommandResult.new('', 'not found', 1),
+        'version' => Train::Extras::CommandResult.new('', 'not found', 1),
+        # Unix detection commands fail (no shell)
+        'uname -s' => Train::Extras::CommandResult.new('', 'OCI runtime exec failed', 126),
+        'uname -r' => Train::Extras::CommandResult.new('', 'OCI runtime exec failed', 126),
+        'uname -m' => Train::Extras::CommandResult.new('', 'OCI runtime exec failed', 126),
+        # File detection fails (no shell to run test command)
+        'test -f /etc/os-release && cat /etc/os-release' =>
+          Train::Extras::CommandResult.new('', 'OCI runtime exec failed', 126),
+        'test -f /etc/debian_version' =>
+          Train::Extras::CommandResult.new('', 'OCI runtime exec failed', 126),
+      }
+    end
+
+    context 'when platform detection fails completely' do
+      before do
+        mock_distroless_detection(subject)
+      end
+
+      it 'falls back to unknown platform' do
+        # When Train's Detect.scan fails, we should get a fallback platform
+        platform = subject.platform
+        # The fallback should still be a valid platform object
+        expect(platform).not_to be_nil
+        expect(platform.name).to eq('unknown')
+      end
+
+      it 'still adds kubernetes family to fallback platform' do
+        platform = subject.platform
+        expect(platform.family_hierarchy).to include('kubernetes')
+      end
+
+      it 'still adds container family to fallback platform' do
+        platform = subject.platform
+        expect(platform.family_hierarchy).to include('container')
+      end
+    end
+  end
 end
