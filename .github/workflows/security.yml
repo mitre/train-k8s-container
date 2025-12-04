@@ -47,9 +47,11 @@ jobs:
       - name: Secret scan summary
         if: always()
         run: |
-          echo "## 🔒 Secret Scanning Results" >> $GITHUB_STEP_SUMMARY
-          echo "Scanned for 800+ types of secrets and credentials" >> $GITHUB_STEP_SUMMARY
-          echo "✅ Secret scan completed - check logs for details" >> $GITHUB_STEP_SUMMARY
+          {
+            echo "## 🔒 Secret Scanning Results"
+            echo "Scanned for 800+ types of secrets and credentials"
+            echo "✅ Secret scan completed - check logs for details"
+          } >> "$GITHUB_STEP_SUMMARY"
 
   # Job 2: Dependency Vulnerability Scanning
   vulnerability-scanning:
@@ -81,9 +83,11 @@ jobs:
       - name: Vulnerability scan summary
         if: always()
         run: |
-          echo "## 🛡️ Dependency Vulnerability Scan" >> $GITHUB_STEP_SUMMARY
-          echo "Checked Gemfile.lock against Ruby Advisory Database" >> $GITHUB_STEP_SUMMARY
-          echo "✅ Scan completed - review logs for any vulnerabilities" >> $GITHUB_STEP_SUMMARY
+          {
+            echo "## 🛡️ Dependency Vulnerability Scan"
+            echo "Checked Gemfile.lock against Ruby Advisory Database"
+            echo "✅ Scan completed - review logs for any vulnerabilities"
+          } >> "$GITHUB_STEP_SUMMARY"
 
   # Job 3: SBOM Generation
   sbom-generation:
@@ -118,14 +122,16 @@ jobs:
       - name: SBOM generation summary
         if: always()
         run: |
-          echo "## 📦 Software Bill of Materials (SBOM)" >> $GITHUB_STEP_SUMMARY
-          echo "Generated CycloneDX SBOM in JSON format" >> $GITHUB_STEP_SUMMARY
-          echo "✅ SBOM artifact uploaded for 90-day retention" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### SBOM Contents Preview" >> $GITHUB_STEP_SUMMARY
-          echo '```json' >> $GITHUB_STEP_SUMMARY
-          head -n 20 sbom.json >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
+          {
+            echo "## 📦 Software Bill of Materials (SBOM)"
+            echo "Generated CycloneDX SBOM in JSON format"
+            echo "✅ SBOM artifact uploaded for 90-day retention"
+            echo ""
+            echo "### SBOM Contents Preview"
+            echo '```json'
+            head -n 20 sbom.json
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
   # Job 4: License Compliance Audit
   license-audit:
@@ -153,9 +159,11 @@ jobs:
       - name: License audit summary
         if: always()
         run: |
-          echo "## ⚖️ License Compliance Audit" >> $GITHUB_STEP_SUMMARY
-          echo "Analyzed licenses of all gem dependencies" >> $GITHUB_STEP_SUMMARY
-          echo "✅ License audit completed - review for compliance" >> $GITHUB_STEP_SUMMARY
+          {
+            echo "## ⚖️ License Compliance Audit"
+            echo "Analyzed licenses of all gem dependencies"
+            echo "✅ License audit completed - review for compliance"
+          } >> "$GITHUB_STEP_SUMMARY"
 
   # Job 5: Security Summary
   security-summary:
@@ -166,16 +174,20 @@ jobs:
 
     steps:
       - name: Generate security summary
+        env:
+          COMMIT_SHA: ${{ github.sha }}
         run: |
-          echo "# 🔐 Security Audit Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "All security checks completed for commit ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "## Scan Results" >> $GITHUB_STEP_SUMMARY
-          echo "- 🔒 Secret Scanning: Completed" >> $GITHUB_STEP_SUMMARY
-          echo "- 🛡️ Vulnerability Scan: Completed" >> $GITHUB_STEP_SUMMARY
-          echo "- 📦 SBOM Generation: Completed" >> $GITHUB_STEP_SUMMARY
-          echo "- ⚖️ License Audit: Completed" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "ℹ️ This workflow provides security notifications and does not block builds." >> $GITHUB_STEP_SUMMARY
-          echo "Review individual job logs for detailed findings." >> $GITHUB_STEP_SUMMARY
+          {
+            echo "# 🔐 Security Audit Summary"
+            echo ""
+            echo "All security checks completed for commit $COMMIT_SHA"
+            echo ""
+            echo "## Scan Results"
+            echo "- 🔒 Secret Scanning: Completed"
+            echo "- 🛡️ Vulnerability Scan: Completed"
+            echo "- 📦 SBOM Generation: Completed"
+            echo "- ⚖️ License Audit: Completed"
+            echo ""
+            echo "ℹ️ This workflow provides security notifications and does not block builds."
+            echo "Review individual job logs for detailed findings."
+          } >> "$GITHUB_STEP_SUMMARY"

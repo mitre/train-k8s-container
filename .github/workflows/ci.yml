@@ -101,9 +101,11 @@ jobs:
           # Alpine pod (ash/sh)
           kubectl run test-alpine --image=alpine:3.18 --restart=Never -- sleep infinity
 
-          # Distroless pod (no shell) - uses Google's distroless base image
+          # Distroless pod (no shell) - uses the Kubernetes pause image
+          # This image runs forever without needing sleep (designed for pause containers)
+          # Static distroless images like gcr.io/distroless/static have NO binaries at all
           # This tests the fallback_platform and execute_without_shell code paths
-          kubectl run test-distroless --image=gcr.io/distroless/static-debian12:nonroot --restart=Never -- sleep infinity
+          kubectl run test-distroless --image=registry.k8s.io/pause:3.9 --restart=Never
 
           # Wait for pods to be in Ready condition
           kubectl wait --for=condition=Ready pod/test-ubuntu --timeout=120s
@@ -124,7 +126,7 @@ jobs:
             echo "Verifying $pod is fully operational..."
             while [ $attempt -le $max_attempts ]; do
               # Try to execute a simple command in the container
-              if kubectl exec $pod -- echo "ready" 2>/dev/null | grep -q "ready"; then
+              if kubectl exec "$pod" -- echo "ready" 2>/dev/null | grep -q "ready"; then
                 echo "✅ $pod is ready (attempt $attempt)"
                 return 0
               fi
@@ -145,7 +147,7 @@ jobs:
             echo "Verifying distroless $pod is running..."
             while [ $attempt -le $max_attempts ]; do
               # For distroless, we can only check if the pod is Running
-              status=$(kubectl get pod $pod -o jsonpath='{.status.phase}' 2>/dev/null)
+              status=$(kubectl get pod "$pod" -o jsonpath='{.status.phase}' 2>/dev/null)
               if [ "$status" = "Running" ]; then
                 echo "✅ $pod is running (distroless - no shell) (attempt $attempt)"
                 return 0
@@ -324,7 +326,7 @@ jobs:
           for pod in target-ubuntu target-alpine; do
             attempt=1
             while [ $attempt -le $max_attempts ]; do
-              if kubectl exec $pod -- echo "ready" 2>/dev/null | grep -q "ready"; then
+              if kubectl exec "$pod" -- echo "ready" 2>/dev/null | grep -q "ready"; then
                 echo "✅ $pod is ready"
                 break
               fi
@@ -340,10 +342,11 @@ jobs:
           cat > Dockerfile.scanner <<'EOF'
           FROM ruby:3.3-slim
 
-          # Install required packages
+          # Install required packages (git needed for gemspec during plugin install)
           RUN apt-get update && apt-get install -y \
               curl \
               ca-certificates \
+              git \
               && rm -rf /var/lib/apt/lists/*
 
           # Install kubectl
