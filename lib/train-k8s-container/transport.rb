@@ -6,7 +6,7 @@ require 'train/plugins'
 module TrainPlugins
   module K8sContainer
     # Train transport for connecting to Kubernetes containers via kubectl exec
-    class Transport < Train.plugin(2)
+    class Transport < Train.plugin(1)
       require_relative 'connection'
 
       name 'k8s-container'
