@@ -3,12 +3,40 @@
 # Test helpers for mocking shell detection scenarios
 # Provides consistent mocking patterns across multiple spec files
 module ShellDetectionHelpers
+  # Sample /etc/os-release content for Ubuntu
+  UBUNTU_OS_RELEASE = <<~OS_RELEASE
+    PRETTY_NAME="Ubuntu 22.04.3 LTS"
+    NAME="Ubuntu"
+    VERSION_ID="22.04"
+    VERSION="22.04.3 LTS (Jammy Jellyfish)"
+    VERSION_CODENAME=jammy
+    ID=ubuntu
+    ID_LIKE=debian
+    HOME_URL="https://www.ubuntu.com/"
+    SUPPORT_URL="https://help.ubuntu.com/"
+    BUG_REPORT_URL="https://bugs.launchpad.net/ubuntu/"
+  OS_RELEASE
+
+  # Sample /etc/os-release content for Alpine
+  ALPINE_OS_RELEASE = <<~OS_RELEASE
+    NAME="Alpine Linux"
+    ID=alpine
+    VERSION_ID=3.18.4
+    PRETTY_NAME="Alpine Linux v3.18"
+    HOME_URL="https://alpinelinux.org/"
+    BUG_REPORT_URL="https://gitlab.alpinelinux.org/alpine/aports/-/issues"
+  OS_RELEASE
+
   # Mock a Unix container with bash shell available
   # @param client [Object] The kubectl client to mock
-  def mock_unix_container_with_bash(client)
+  # @param os_release [String] Content for /etc/os-release (default: Ubuntu)
+  def mock_unix_container_with_bash(client, os_release: UBUNTU_OS_RELEASE)
     allow(client).to receive(:execute_raw)
       .with('echo test')
       .and_return(double(stdout: 'test', stderr: '', exit_status: 0))
+    allow(client).to receive(:execute_raw)
+      .with('cat /etc/os-release 2>/dev/null')
+      .and_return(double(stdout: os_release, stderr: '', exit_status: 0))
     allow(client).to receive(:execute_raw)
       .with('test -x /bin/bash && echo OK')
       .and_return(double(stdout: 'OK', stderr: '', exit_status: 0))
@@ -20,6 +48,9 @@ module ShellDetectionHelpers
     allow(client).to receive(:execute_raw)
       .with('echo test')
       .and_return(double(stdout: 'test', stderr: '', exit_status: 0))
+    allow(client).to receive(:execute_raw)
+      .with('cat /etc/os-release 2>/dev/null')
+      .and_return(double(stdout: ALPINE_OS_RELEASE, stderr: '', exit_status: 0))
     allow(client).to receive(:execute_raw)
       .with('test -x /bin/bash && echo OK')
       .and_return(double(stdout: '', stderr: '', exit_status: 1))
@@ -34,6 +65,9 @@ module ShellDetectionHelpers
     allow(client).to receive(:execute_raw)
       .with('echo test')
       .and_return(double(stdout: 'test', stderr: '', exit_status: 0))
+    allow(client).to receive(:execute_raw)
+      .with('cat /etc/os-release 2>/dev/null')
+      .and_return(double(stdout: ALPINE_OS_RELEASE, stderr: '', exit_status: 0))
     allow(client).to receive(:execute_raw)
       .with('test -x /bin/bash && echo OK')
       .and_return(double(stdout: '', stderr: '', exit_status: 1))
@@ -77,6 +111,10 @@ module ShellDetectionHelpers
     allow(client).to receive(:execute_raw)
       .with('echo test')
       .and_return(double(stdout: 'test', stderr: '', exit_status: 0))
+    # Distroless may not have /etc/os-release or it may fail
+    allow(client).to receive(:execute_raw)
+      .with('cat /etc/os-release 2>/dev/null')
+      .and_return(double(stdout: '', stderr: '', exit_status: 1))
     # All shell checks fail
     allow(client).to receive(:execute_raw)
       .with(/test -x/)

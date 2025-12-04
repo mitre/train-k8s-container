@@ -17,7 +17,7 @@ RSpec.describe TrainPlugins::K8sContainer::KubectlCommandBuilder do
     it 'returns kubectl exec command components' do
       expect(builder.base_command).to eq([
                                            'kubectl', 'exec', '--stdin',
-                                           'test-pod', '-n', 'default', '-c', 'nginx'
+                                           'test-pod', '-n', 'default', '-c', 'nginx',
                                          ])
     end
   end

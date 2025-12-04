@@ -41,3 +41,17 @@ Layout/LineLength:
 # Gemspec - Support Ruby >= 3.1 (InSpec 6.x) but develop on 3.3
 Gemspec/RequiredRubyVersion:
   Enabled: false
+
+# Use consistent style for percent literals (avoid flip-flopping during autocorrect)
+Style/PercentLiteralDelimiters:
+  PreferredDelimiters:
+    default: '[]'
+    '%w': '[]'
+    '%i': '[]'
+
+# Trailing commas in multiline (Chef standard)
+Style/TrailingCommaInArrayLiteral:
+  EnforcedStyleForMultiline: consistent_comma
+
+Style/TrailingCommaInHashLiteral:
+  EnforcedStyleForMultiline: consistent_comma

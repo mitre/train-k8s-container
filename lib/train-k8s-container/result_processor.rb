@@ -19,7 +19,7 @@ module TrainPlugins
       ].freeze
 
       # Commands that don't produce output (used for silent failure detection)
-      SILENT_COMMANDS = %w(true false touch mkdir rm sleep test).freeze
+      SILENT_COMMANDS = %w[true false touch mkdir rm sleep test].freeze
 
       # Process a command result: validate, sanitize, and return Train::Extras::CommandResult
       # @param result [Mixlib::ShellOut::Result] The raw command result

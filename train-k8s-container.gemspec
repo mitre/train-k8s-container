@@ -25,7 +25,7 @@ Gem::Specification.new do |spec|
   # The `git ls-files -z` loads the files in the RubyGem that have been added into git.
   spec.files = Dir.chdir(__dir__) do
     `git ls-files -z`.split("\x0").reject do |f|
-      (File.expand_path(f) == __FILE__) || f.start_with?(*%w(bin/ test/ spec/ features/ .git))
+      (File.expand_path(f) == __FILE__) || f.start_with?(*%w[bin/ test/ spec/ features/ .git])
     end
   end
 
@@ -37,4 +37,8 @@ Gem::Specification.new do |spec|
   # causes gem activation conflicts (e.g., multi_json version conflicts).
   #
   # For development, add train to Gemfile in the development group.
+
+  # Ruby 3.4+ will remove base64 from default gems - add it explicitly
+  # This fixes the deprecation warning from train-core
+  spec.add_dependency 'base64', '>= 0.2.0'
 end
