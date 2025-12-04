@@ -43,7 +43,9 @@ RSpec.describe 'End-to-End Integration', type: :integration do
   end
 
   describe 'Platform detection' do
-    it 'detects Unix platform family for Ubuntu' do
+    # Platform detection uses Train's Detect.scan() which returns actual OS info
+    # plus kubernetes/container context families added by our plugin
+    it 'detects actual OS platform for Ubuntu' do
       conn = TrainPlugins::K8sContainer::Connection.new(
         pod: 'test-ubuntu',
         container_name: 'test-ubuntu',
@@ -51,15 +53,21 @@ RSpec.describe 'End-to-End Integration', type: :integration do
       )
 
       platform = conn.platform
-      families = platform.families.keys.map(&:name)
 
-      expect(families).to include('cloud')
-      expect(families).to include('container')
-      expect(families).to include('unix')
-      expect(families).not_to include('windows')
+      # Should detect actual Ubuntu platform
+      expect(platform.name).to eq('ubuntu')
+      expect(platform[:family]).to eq('debian')
+
+      # Should have standard OS family hierarchy
+      expect(platform.linux?).to be true
+      expect(platform.unix?).to be true
+
+      # Should add kubernetes/container context families
+      expect(platform.family_hierarchy).to include('kubernetes')
+      expect(platform.family_hierarchy).to include('container')
     end
 
-    it 'detects Unix platform family for Alpine' do
+    it 'detects actual OS platform for Alpine' do
       conn = TrainPlugins::K8sContainer::Connection.new(
         pod: 'test-alpine',
         container_name: 'test-alpine',
@@ -67,9 +75,14 @@ RSpec.describe 'End-to-End Integration', type: :integration do
       )
 
       platform = conn.platform
-      families = platform.families.keys.map(&:name)
 
-      expect(families).to include('unix')
+      # Should detect actual Alpine platform
+      expect(platform.name).to eq('alpine')
+      expect(platform.linux?).to be true
+
+      # Should add kubernetes/container context families
+      expect(platform.family_hierarchy).to include('kubernetes')
+      expect(platform.family_hierarchy).to include('container')
     end
   end
 
