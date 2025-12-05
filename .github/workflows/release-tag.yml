@@ -20,12 +20,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Need full history for git-cliff
+          fetch-depth: 0  # Required for git-cliff to access full history
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Configure git
         run: |
-          git config --global user.email "actions@github.com"
-          git config --global user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git config user.name "GitHub Actions"
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
@@ -48,38 +49,42 @@ jobs:
         id: version
         run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
 
-      - name: Install git-cliff
-        run: |
-          curl -sSfL https://github.com/orhun/git-cliff/releases/download/v2.4.0/git-cliff-2.4.0-x86_64-unknown-linux-gnu.tar.gz | tar xz
-          sudo mv git-cliff-2.4.0/git-cliff /usr/local/bin/
-
       - name: Generate changelog with git-cliff
+        id: changelog
+        uses: orhun/git-cliff-action@v4
+        with:
+          config: cliff.toml
+          args: --tag ${{ github.ref_name }}
+        env:
+          OUTPUT: CHANGELOG.md
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Commit and push changelog
         run: |
-          # Generate changelog for this release
-          git-cliff --tag "${{ github.ref_name }}" -o CHANGELOG.md
+          git checkout main
 
-          # Commit the updated changelog
-          git add CHANGELOG.md
-          git commit -m "chore(release): update CHANGELOG for ${{ github.ref_name }}" || echo "No changelog changes to commit"
+          # Copy the generated changelog
+          cp "${{ steps.changelog.outputs.changelog }}" CHANGELOG.md || true
 
-          # Push to main branch
-          git push origin HEAD:main
+          # Check if there are changes to commit
+          if git diff --quiet CHANGELOG.md 2>/dev/null; then
+            echo "No changelog changes to commit"
+          else
+            git add CHANGELOG.md
+            git commit -m "chore(release): update CHANGELOG for ${{ github.ref_name }}"
+            git push origin main
+          fi
 
-      - name: Extract release notes from changelog
-        id: notes
-        run: |
-          VERSION="${{ steps.version.outputs.VERSION }}"
-          {
-            echo "NOTES<<EOF"
-            # Extract just this version's notes from the freshly generated changelog
-            sed -n "/## \[$VERSION\]/,/## \[/p" CHANGELOG.md | head -n -1
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
+          # Go back to tagged commit for building
+          git checkout "${{ github.ref_name }}"
+
+      - name: Build gem
+        run: gem build train-k8s-container.gemspec
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          body: ${{ steps.notes.outputs.NOTES }}
+          body: ${{ steps.changelog.outputs.content }}
           draft: false
           prerelease: false
           files: |
@@ -88,7 +93,5 @@ jobs:
       - name: Configure RubyGems credentials
         uses: rubygems/configure-rubygems-credentials@v1.0.0
 
-      - name: Build and publish gem
-        run: |
-          gem build train-k8s-container.gemspec
-          gem push train-k8s-container-*.gem
+      - name: Publish gem to RubyGems
+        run: gem push train-k8s-container-*.gem
