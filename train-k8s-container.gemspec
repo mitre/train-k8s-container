@@ -21,7 +21,6 @@ Gem::Specification.new do |spec|
   spec.required_ruby_version = '>= 3.1'
 
   spec.metadata['rubygems_mfa_required'] = 'true'
-  spec.metadata['homepage_uri'] = spec.homepage
   spec.metadata['source_code_uri'] = 'https://github.com/mitre/train-k8s-container'
   spec.metadata['changelog_uri'] = 'https://github.com/mitre/train-k8s-container/blob/main/CHANGELOG.md'
   spec.metadata['bug_tracker_uri'] = 'https://github.com/mitre/train-k8s-container/issues'
@@ -46,5 +45,5 @@ Gem::Specification.new do |spec|
 
   # Ruby 3.4+ will remove base64 from default gems - add it explicitly
   # This fixes the deprecation warning from train-core
-  spec.add_dependency 'base64', '>= 0.2.0'
+  spec.add_dependency 'base64', '~> 0.2', '>= 0.2.0'
 end
