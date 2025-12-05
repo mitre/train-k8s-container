@@ -1,13 +1,54 @@
 # Changelog
 
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+### Added
+
+- **ci**: Add real STIG profile and same-pod container-to-container tests
+- Migrate to Train plugin v2 with multi-platform support and security improvements
+- Platform detection using Detect + Context pattern (correct OS detection for InSpec resources)
+
+### Documentation
+
+- Add MITRE standards documentation (LICENSE.md, NOTICE.md, CODE_OF_CONDUCT.md)
+- Add CONTRIBUTING.md and DEVELOPMENT.md guides
+- Complete README.md rewrite with MITRE branding
+- Add release-tag.yml workflow for automated gem publication
+
+### Fixed
+
+- **ci**: Use pre-built cinc-scanner:local for same-pod testing
+- **ci**: Fix kubectl cp glob pattern for same-pod test
+- **ci**: Fix distroless test, Dockerfile, and shellcheck warnings
+
+### Miscellaneous Tasks
+
+- Switch from InSpec to Cinc Auditor (license-free)
+- Add git-cliff configuration for changelog generation
+
+### Refactor
+
+- DRY improvements, CI enhancements, and distroless support
+
+### Testing
+
+- **integration**: Update platform tests for Detect+Context pattern
+
 ## [2.0.0] - 2025-10-04
 
 ### Breaking Changes
+
 - **BREAKING**: Namespace changed from `Train::K8s::Container` to `TrainPlugins::K8sContainer` (Train v2 standard)
 - **BREAKING**: Replaced deprecated chefstyle with cookstyle for linting
 - Ruby requirement: >= 3.1
 
 ### Added
+
 - **Shell Detection**: Auto-detect bash, sh, ash, zsh (Unix) and cmd.exe, powershell.exe, pwsh.exe (Windows)
 - **OS Detection**: Heuristic detection of Unix vs Windows containers
 - **Windows Container Support**: Full support for Windows Server containers
@@ -17,50 +58,99 @@
 - **Logging**: Configurable logging via TRAIN_K8S_LOG_LEVEL (DEBUG/WARN/ERROR)
 - **Custom Errors**: Specific error classes for better error handling
 - **Testing Utilities**: test/scripts/ for local development
+- **CI/CD**: Comprehensive GitHub Actions with kind cluster integration tests
 
 ### Changed
-- File structure: lib/train/k8s/container/* → lib/train-k8s-container/*
+
+- File structure: lib/train/k8s/container/* -> lib/train-k8s-container/*
 - Platform: Uses force_platform! with cloud+unix families
 - Connection: Lazy kubectl_client initialization
 - Transport: Proper v2 API implementation
 
 ### Fixed
+
 - Shell detection command escaping
 - Platform detection (no longer probes Windows on Linux containers)
 - Thread safety (SessionManager with Mutex)
 - Test command output validation
 
 ### Security
-- ANSI injection prevention
+
+- ANSI injection prevention (CVE-2021-25743)
 - Command escaping with Shellwords
+- RFC 1123 validation for pod/container names
 - Network error detection
 
-<!-- latest_release 1.3.1 -->
-## [v1.3.1](https://github.com/inspec/train-k8s-container/tree/v1.3.1) (2024-03-05)
+## [1.3.1] - 2024-03-05
 
-#### Merged Pull Requests
-- Bug Fix shell run command [#21](https://github.com/inspec/train-k8s-container/pull/21) ([sathish-progress](https://github.com/sathish-progress))
-<!-- latest_release -->
+### Fixed
 
-<!-- release_rollup -->
-### Changes not yet released to rubygems.org
+- Fix run command to use Bourne shell for OS resource commands ([#21](https://github.com/inspec/train-k8s-container/pull/21))
 
-#### Merged Pull Requests
-- Bug Fix shell run command [#21](https://github.com/inspec/train-k8s-container/pull/21) ([sathish-progress](https://github.com/sathish-progress)) <!-- 1.3.1 -->
-- add support to file connection [#19](https://github.com/inspec/train-k8s-container/pull/19) ([sathish-progress](https://github.com/sathish-progress)) <!-- 1.3.0 -->
-- Fix for undefined method presence [#17](https://github.com/inspec/train-k8s-container/pull/17) ([Vasu1105](https://github.com/Vasu1105)) <!-- 1.2.1 -->
-- CHEF-7406 update README and inspec compatibility [#15](https://github.com/inspec/train-k8s-container/pull/15) ([sathish-progress](https://github.com/sathish-progress)) <!-- 1.2.0 -->
-- CHEF-7406 connection to container [#14](https://github.com/inspec/train-k8s-container/pull/14) ([sathish-progress](https://github.com/sathish-progress)) <!-- 1.1.2 -->
-- CHEF-7406 specs for transporter [#13](https://github.com/inspec/train-k8s-container/pull/13) ([sathish-progress](https://github.com/sathish-progress)) <!-- 1.1.1 -->
-- CHEF-7406 kubectl exec client [#10](https://github.com/inspec/train-k8s-container/pull/10) ([sathish-progress](https://github.com/sathish-progress)) <!-- 1.1.0 -->
-- CHEF-7406 transporter for k8s container [#9](https://github.com/inspec/train-k8s-container/pull/9) ([sathish-progress](https://github.com/sathish-progress)) <!-- 1.0.0 -->
-- Updates verify pipeline and coverage pipeline [#12](https://github.com/inspec/train-k8s-container/pull/12) ([Vasu1105](https://github.com/Vasu1105)) <!-- 0.0.7 -->
-- Add Version bumper [#11](https://github.com/inspec/train-k8s-container/pull/11) ([sathish-progress](https://github.com/sathish-progress)) <!-- 0.0.6 -->
-- Set license to Apache v 2.0 [#8](https://github.com/inspec/train-k8s-container/pull/8) ([clintoncwolfe](https://github.com/clintoncwolfe)) <!-- 0.0.5 -->
-- CHEF-8269: Configures sonarqube for code coverage analysis [#7](https://github.com/inspec/train-k8s-container/pull/7) ([Vasu1105](https://github.com/Vasu1105)) <!-- 0.0.4 -->
-- CHEF-8270: Initialize repo with `bundle gem train-k8s-container` [#2](https://github.com/inspec/train-k8s-container/pull/2) ([ahasunos](https://github.com/ahasunos)) <!-- 0.0.3 -->
-- CHEF-8269: Implement coverage pipeline for train-k8s-container [#3](https://github.com/inspec/train-k8s-container/pull/3) ([ahasunos](https://github.com/ahasunos)) <!-- 0.0.2 -->
-<!-- release_rollup -->
+## [1.3.0] - 2024-01-31
 
-<!-- latest_stable_release -->
-<!-- latest_stable_release -->
+### Added
+
+- Add support for file connections ([#19](https://github.com/inspec/train-k8s-container/pull/19))
+
+## [1.2.1] - 2024-01-18
+
+### Fixed
+
+- Fix for undefined method presence ([#17](https://github.com/inspec/train-k8s-container/pull/17))
+
+## [1.2.0] - 2024-01-16
+
+### Changed
+
+- Update README and InSpec compatibility ([#15](https://github.com/inspec/train-k8s-container/pull/15))
+
+## [1.1.2] - 2024-01-16
+
+### Fixed
+
+- Connection to container improvements ([#14](https://github.com/inspec/train-k8s-container/pull/14))
+
+## [1.1.1] - 2024-01-15
+
+### Testing
+
+- Specs for transporter ([#13](https://github.com/inspec/train-k8s-container/pull/13))
+
+## [1.1.0] - 2024-01-11
+
+### Added
+
+- kubectl exec client implementation ([#10](https://github.com/inspec/train-k8s-container/pull/10))
+
+## [1.0.0] - 2024-01-11
+
+### Added
+
+- Transporter for k8s container ([#9](https://github.com/inspec/train-k8s-container/pull/9))
+
+## [0.0.7] - 2024-01-11
+
+- Updates verify pipeline and coverage pipeline
+
+## [0.0.6] - 2024-01-09
+
+- Add version bumper
+
+## [0.0.5] - 2024-01-02
+
+- Set license to Apache v 2.0
+
+## [0.0.4] - 2023-11-20
+
+- Configure SonarQube for code coverage analysis
+
+## [0.0.3] - 2023-11-15
+
+- Initialize repo with `bundle gem train-k8s-container`
+
+## [0.0.2] - 2023-11-15
+
+- Initial expeditor configuration and coverage pipeline
+
+<!-- generated by git-cliff -->
