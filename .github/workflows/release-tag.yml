@@ -20,13 +20,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Need full history to checkout branch
+          fetch-depth: 0  # Need full history for git-cliff
 
-      - name: Configure git and checkout main
+      - name: Configure git
         run: |
           git config --global user.email "actions@github.com"
           git config --global user.name "GitHub Actions"
-          git checkout main
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
@@ -49,18 +48,31 @@ jobs:
         id: version
         run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
 
-      - name: Read changelog for release notes
+      - name: Install git-cliff
+        run: |
+          curl -sSfL https://github.com/orhun/git-cliff/releases/download/v2.4.0/git-cliff-2.4.0-x86_64-unknown-linux-gnu.tar.gz | tar xz
+          sudo mv git-cliff-2.4.0/git-cliff /usr/local/bin/
+
+      - name: Generate changelog with git-cliff
+        run: |
+          # Generate changelog for this release
+          git-cliff --tag "${{ github.ref_name }}" -o CHANGELOG.md
+
+          # Commit the updated changelog
+          git add CHANGELOG.md
+          git commit -m "chore(release): update CHANGELOG for ${{ github.ref_name }}" || echo "No changelog changes to commit"
+
+          # Push to main branch
+          git push origin HEAD:main
+
+      - name: Extract release notes from changelog
         id: notes
         run: |
-          # Extract release notes from CHANGELOG.md for this version
           VERSION="${{ steps.version.outputs.VERSION }}"
           {
             echo "NOTES<<EOF"
-            if grep -q "## \[$VERSION\]" CHANGELOG.md 2>/dev/null; then
-              sed -n "/## \[$VERSION\]/,/## \[/p" CHANGELOG.md | head -n -1
-            else
-              echo "Release v$VERSION"
-            fi
+            # Extract just this version's notes from the freshly generated changelog
+            sed -n "/## \[$VERSION\]/,/## \[/p" CHANGELOG.md | head -n -1
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
@@ -70,6 +82,8 @@ jobs:
           body: ${{ steps.notes.outputs.NOTES }}
           draft: false
           prerelease: false
+          files: |
+            train-k8s-container-*.gem
 
       - name: Configure RubyGems credentials
         uses: rubygems/configure-rubygems-credentials@v1.0.0
