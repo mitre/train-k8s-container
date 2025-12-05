@@ -5,21 +5,27 @@ $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
 require 'train-k8s-container/version'
 
 Gem::Specification.new do |spec|
-  spec.name = 'train-k8s-container'
+  spec.name = 'train-k8s-container-mitre'
   spec.version = TrainPlugins::K8sContainer::VERSION
-  spec.authors = ['Chef InSpec Team']
-  spec.email = ['inspec@progress.com']
+  spec.authors = ['MITRE SAF Team']
+  spec.email = ['saf@groups.mitre.org']
 
-  spec.summary = 'Transport for Kubernetes containers for use with Chef InSpec.'
-  spec.description = 'Transport for Kubernetes containers for use with Chef InSpec.'
-  spec.homepage = 'https://github.com/inspec/train-k8s-container'
+  spec.summary = 'Train transport plugin for scanning Kubernetes containers with InSpec/Cinc Auditor.'
+  spec.description = <<~DESC
+    A Train transport plugin that enables Chef InSpec and Cinc Auditor to run compliance
+    scans against containers running in Kubernetes clusters. Uses kubectl exec to execute
+    commands inside containers, with proper platform detection for accurate OS resource behavior.
+  DESC
+  spec.homepage = 'https://github.com/mitre/train-k8s-container'
   spec.license = 'Apache-2.0'
   spec.required_ruby_version = '>= 3.1'
 
   spec.metadata['rubygems_mfa_required'] = 'true'
   spec.metadata['homepage_uri'] = spec.homepage
-  spec.metadata['source_code_uri'] = 'https://github.com/inspec/train-k8s-container'
-  # spec.metadata["changelog_uri"] = "TODO: Put your gem's CHANGELOG.md URL here."
+  spec.metadata['source_code_uri'] = 'https://github.com/mitre/train-k8s-container'
+  spec.metadata['changelog_uri'] = 'https://github.com/mitre/train-k8s-container/blob/main/CHANGELOG.md'
+  spec.metadata['bug_tracker_uri'] = 'https://github.com/mitre/train-k8s-container/issues'
+  spec.metadata['documentation_uri'] = 'https://github.com/mitre/train-k8s-container#readme'
 
   # Specify which files should be added to the gem when it is released.
   # The `git ls-files -z` loads the files in the RubyGem that have been added into git.

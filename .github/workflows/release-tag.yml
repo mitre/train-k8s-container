@@ -88,10 +88,10 @@ jobs:
           draft: false
           prerelease: false
           files: |
-            train-k8s-container-*.gem
+            train-k8s-container-mitre-*.gem
 
       - name: Configure RubyGems credentials
         uses: rubygems/configure-rubygems-credentials@v1.0.0
 
       - name: Publish gem to RubyGems
-        run: gem push train-k8s-container-*.gem
+        run: gem push train-k8s-container-mitre-*.gem
