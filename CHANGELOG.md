@@ -5,154 +5,142 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [2.0.0] - 2025-12-05
 
 ### Added
 
-- **ci**: Real STIG profile execution (canonical-ubuntu-22.04-lts-stig-baseline)
-- **ci**: Same-pod container-to-container scanning test
-- **ci**: Pod-to-pod scanning with cinc-scanner Docker image
+- Migrate to Train plugin v2 with multi-platform support and security improvements ([#1](https://github.com/mitre/train-k8s-container/issues/1))
+- Migrate to Train plugin v2 with multi-platform support and security improvements
+- Fix platform detection using Detect + Context pattern
+- **ci**: Add real STIG profile and same-pod container-to-container tests
 
 ### Documentation
 
-- MITRE standards documentation (LICENSE.md, NOTICE.md, CODE_OF_CONDUCT.md)
-- CONTRIBUTING.md with development workflow
-- DEVELOPMENT.md with local testing guide (kind cluster setup)
-- README.md rewrite with MITRE branding and comprehensive usage docs
-- SECURITY.md with MITRE SAF contact info
+- Add MITRE standards documentation and release workflow
+- Update CHANGELOG.md with git-cliff format
+- Rewrite CHANGELOG with accurate v2.0.0 content
 
 ### Fixed
 
-- **ci**: Use pre-built cinc-scanner:local image for same-pod testing
-- **platform**: Detect+Context pattern for accurate OS detection
+- **ci**: Fix distroless test, Dockerfile, and shellcheck warnings
+- **ci**: Fix kubectl cp glob pattern for same-pod test
+- **ci**: Use pre-built cinc-scanner:local for same-pod testing
+- Remove gemspec warnings for RubyGems publishing
 
 ### Miscellaneous Tasks
 
-- Switch from InSpec to Cinc Auditor (open source, license-free)
-- Add git-cliff configuration for automated changelog generation
-- Add release-tag.yml workflow for RubyGems publication
+- Switch from InSpec to Cinc Auditor (license-free)
+- Add git-cliff configuration for changelog generation
+- Add git-cliff to release workflow for automated changelog
+- Use official git-cliff-action for changelog generation
+- Rename gem to train-k8s-container-mitre for RubyGems publishing
 
-## [2.0.0] - 2025-10-04
+### Refactor
 
-### Breaking Changes
+- DRY improvements, CI enhancements, and distroless support
 
-- **BREAKING**: Namespace changed from `Train::K8s::Container` to `TrainPlugins::K8sContainer` (Train v2 standard)
-- **BREAKING**: File structure changed from `lib/train/k8s/container/*` to `lib/train-k8s-container/*`
-- Ruby requirement: >= 3.1
+### Testing
 
-### Added
-
-- **Platform Detection**: Detect+Context pattern using `Train::Platforms::Detect.scan(self)`
-  - Returns actual OS (ubuntu, alpine, centos) so InSpec resources work correctly
-  - Adds `kubernetes` and `container` families for transport awareness
-  - Fallback platform for distroless/minimal containers
-- **Shell Detection**: Tiered detection with automatic fallback
-  - Unix: bash → sh → ash → zsh
-  - Windows: cmd.exe → powershell.exe → pwsh.exe (scaffolded, not tested)
-  - Linux family detection from /etc/os-release
-- **Security Hardening**:
-  - ANSI escape sequence sanitization (CVE-2021-25743 mitigation)
-  - Command injection prevention with Shellwords.escape
-  - RFC 1123 validation for pod/container names
-- **Error Handling**:
-  - Custom error classes (ConnectionError, CommandError, ValidationError)
-  - Retry logic with exponential backoff for transient failures
-- **CI/CD Pipeline**:
-  - GitHub Actions with kind cluster integration tests
-  - Multi-version Ruby (3.1, 3.2, 3.3) and Kubernetes (1.29, 1.30, 1.31) matrix
-  - Security scanning (TruffleHog, bundler-audit, SBOM generation)
-  - Pod-to-pod testing with InSpec running inside cluster
-- **Code Quality**:
-  - Cookstyle linting (replaced deprecated chefstyle)
-  - 95%+ test coverage with SimpleCov
-  - Unit tests (mocked) and integration tests (real kubectl)
-
-### Changed
-
-- Transport: Proper Train v2 plugin API implementation
-- Connection: Lazy initialization of kubectl client
-- Platform: Uses Train's built-in detection instead of force_platform!
-
-### Fixed
-
-- Shell detection command escaping
-- Platform detection accuracy (returns real OS, not generic k8s-container)
-- Thread safety in session management
-
-### Security
-
-- ANSI injection prevention (sanitizes terminal escape sequences)
-- Command escaping with Shellwords
-- Input validation for Kubernetes resource names
-
-### Components
-
-| File | Purpose |
-|------|---------|
-| `transport.rb` | Train v2 plugin registration |
-| `connection.rb` | URI parsing, connection management |
-| `kubectl_exec_client.rb` | kubectl command execution |
-| `platform.rb` | Detect+Context platform detection |
-| `shell_detector.rb` | Shell availability detection |
-| `ansi_sanitizer.rb` | CVE-2021-25743 mitigation |
-| `kubernetes_name_validator.rb` | RFC 1123 validation |
-| `retry_handler.rb` | Exponential backoff retry logic |
+- **integration**: Update platform tests for Detect+Context pattern
 
 ## [1.3.1] - 2024-03-05
 
 ### Fixed
 
-- Fix run command to use Bourne shell for OS resource commands ([#21](https://github.com/inspec/train-k8s-container/pull/21))
+- Fix run command to be run with Bourne shell to execute commands
+
+This is to make sure we are able to run all OS resource commands
+
+Signed-off-by: Sathish Babu <sbabu@progress.com>
 
 ## [1.3.0] - 2024-01-31
 
-### Added
+### Testing
 
-- Add support for file connections ([#19](https://github.com/inspec/train-k8s-container/pull/19))
+- Test file connections
+
+Signed-off-by: Sathish Babu <sbabu@progress.com>
 
 ## [1.2.1] - 2024-01-18
 
-### Fixed
-
-- Fix for undefined method presence ([#17](https://github.com/inspec/train-k8s-container/pull/17))
-
 ## [1.2.0] - 2024-01-16
-
-### Changed
-
-- Update README and InSpec compatibility ([#15](https://github.com/inspec/train-k8s-container/pull/15))
 
 ## [1.1.2] - 2024-01-16
 
 ### Fixed
 
-- Connection to container improvements ([#14](https://github.com/inspec/train-k8s-container/pull/14))
+- Fix connection spec
+
+Signed-off-by: Sathish Babu <sbabu@progress.com>
+- Fix specs to use mocks over real connections
+
+Signed-off-by: Sathish Babu <sbabu@progress.com>
 
 ## [1.1.1] - 2024-01-15
 
+### Fixed
+
+- Fix typo with spec
+
+Signed-off-by: Sathish Babu <sbabu@progress.com>
+
 ### Testing
 
-- Specs for transporter ([#13](https://github.com/inspec/train-k8s-container/pull/13))
+- Test connection
+
+Signed-off-by: Sathish Babu <sbabu@progress.com>
 
 ## [1.1.0] - 2024-01-11
 
-### Added
+### Testing
 
-- kubectl exec client implementation ([#10](https://github.com/inspec/train-k8s-container/pull/10))
+- Test kubectl exec client
+
+Signed-off-by: Sathish Babu <sbabu@progress.com>
+- Test connection and platform
+
+Signed-off-by: Sathish Babu <sbabu@progress.com>
 
 ## [1.0.0] - 2024-01-11
 
-### Added
+## [0.0.7] - 2024-01-11
 
-- Initial transporter for k8s container ([#9](https://github.com/inspec/train-k8s-container/pull/9))
+## [0.0.6] - 2024-01-09
 
-## Pre-1.0 Releases
+## [0.0.5] - 2024-01-02
 
-- **0.0.7** - Pipeline updates
-- **0.0.6** - Version bumper
-- **0.0.5** - Apache v2.0 license
-- **0.0.4** - SonarQube integration
-- **0.0.3** - Initial repo setup
-- **0.0.2** - Expeditor configuration
+## [0.0.4] - 2023-11-20
+
+## [0.0.3] - 2023-11-15
+
+### DELETE
+
+- Remove files not required for the library
+
+### ENHANCE
+
+- Minor improvement with gemspec and rakefile
+
+### GEM
+
+- Initialize repo with bundle gem train-k8s-container
+
+### Miscellaneous Tasks
+
+- Add doc dir with a sample readme
+
+## [0.0.2] - 2023-11-15
+
+### CONFIG
+
+- Add basic expeditor config
+- Add basic verify pipeline
+- Add subscriptions to expeditor config
+- Add basic coverage pipeline template
+- Add configurations for sonarscanner in verify and update coverage pipeline
+
+### DOC
+
+- Add empty changelog required for expeditor
 
 <!-- generated by git-cliff -->
