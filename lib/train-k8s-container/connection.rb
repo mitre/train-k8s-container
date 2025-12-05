@@ -49,8 +49,9 @@ module TrainPlugins
         "k8s-container://#{@namespace}/#{@pod}/#{@container_name}"
       end
 
+      # Delegate to kubectl_client for consistent identifier across all components
       def unique_identifier
-        "#{@namespace}/#{@pod}/#{@container_name}"
+        kubectl_client.unique_identifier
       end
 
       private

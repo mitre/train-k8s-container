@@ -60,11 +60,15 @@ module TrainPlugins
       # Raw execution for shell detection (uses /bin/sh directly)
       def execute_raw(command)
         instruction = @command_builder.with_raw_shell(command)
-        shell = Mixlib::ShellOut.new(instruction, timeout: SHELL_DETECTION_TIMEOUT)
-        res = shell.run_command
-        Train::Extras::CommandResult.new(res.stdout, res.stderr, res.exitstatus)
+        run_shellout(instruction, timeout: SHELL_DETECTION_TIMEOUT)
       rescue Errno::ENOENT => _e
         Train::Extras::CommandResult.new('', '', 1)
+      end
+
+      # Unique identifier for this connection (namespace/pod/container)
+      # Used for session management and logging
+      def unique_identifier
+        "#{@namespace}/#{@pod}/#{@container_name}"
       end
 
       private
@@ -109,8 +113,20 @@ module TrainPlugins
         end
       end
 
+      # Session key reuses unique_identifier for consistency
       def session_key
-        "#{@namespace}/#{@pod}/#{@container_name}"
+        unique_identifier
+      end
+
+      # Execute a command via Mixlib::ShellOut and return Train::Extras::CommandResult
+      # Consolidates the repeated shellout pattern for DRY compliance
+      # @param instruction [String] The full kubectl command to execute
+      # @param timeout [Integer] Command timeout in seconds
+      # @return [Train::Extras::CommandResult] The command result
+      def run_shellout(instruction, timeout:)
+        shell = Mixlib::ShellOut.new(instruction, timeout: timeout)
+        res = shell.run_command
+        Train::Extras::CommandResult.new(res.stdout, res.stderr, res.exitstatus)
       end
 
       # Lazy-load and cache shell detector (caching at instance level)
@@ -128,9 +144,7 @@ module TrainPlugins
                       else
                         @command_builder.with_shell(shell_path, command)
                       end
-        shell = Mixlib::ShellOut.new(instruction, timeout: opts[:timeout] || @timeout)
-        res = shell.run_command
-        Train::Extras::CommandResult.new(res.stdout, res.stderr, res.exitstatus)
+        run_shellout(instruction, timeout: opts[:timeout] || @timeout)
       end
 
       def create_pty_session(shell, opts)
@@ -151,9 +165,7 @@ module TrainPlugins
         end
 
         instruction = @command_builder.direct_binary(command)
-        shell = Mixlib::ShellOut.new(instruction, timeout: opts[:timeout] || @timeout)
-        res = shell.run_command
-        Train::Extras::CommandResult.new(res.stdout, res.stderr, res.exitstatus)
+        run_shellout(instruction, timeout: opts[:timeout] || @timeout)
       end
 
       def default_logger

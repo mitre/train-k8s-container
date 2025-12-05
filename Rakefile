@@ -10,7 +10,7 @@ begin
   require 'rubocop/rake_task'
   desc 'Run Cookstyle tests'
   RuboCop::RakeTask.new(:style) do |task|
-    task.options += %w(--display-cop-names --no-color --parallel)
+    task.options += %w[--display-cop-names --no-color --parallel]
   end
 rescue LoadError
   puts 'cookstyle gem is not installed. bundle install first to make sure all dependencies are installed.'
@@ -32,6 +32,6 @@ task :security do
 end
 
 desc 'Run all quality checks (style + spec + security)'
-task quality: %i(style spec security)
+task quality: %i[style spec security]
 
 task default: :spec

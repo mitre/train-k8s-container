@@ -20,7 +20,7 @@ module TrainPlugins
       def base_command
         [
           @kubectl_path, 'exec', '--stdin',
-          @pod, '-n', @namespace, '-c', @container_name
+          @pod, '-n', @namespace, '-c', @container_name,
         ]
       end
 
@@ -31,7 +31,7 @@ module TrainPlugins
       def with_shell(shell_path, command)
         [
           *base_command,
-          '--', shell_path, '-c', Shellwords.escape(command)
+          '--', shell_path, '-c', Shellwords.escape(command),
         ].join(' ')
       end
 
@@ -43,7 +43,7 @@ module TrainPlugins
         flag = shell_flag_for(shell_path)
         [
           *base_command,
-          '--', shell_path, flag, Shellwords.escape(command)
+          '--', shell_path, flag, Shellwords.escape(command),
         ].join(' ')
       end
 
@@ -63,7 +63,7 @@ module TrainPlugins
       def with_raw_shell(command)
         [
           *base_command,
-          '--', '/bin/sh', '-c', Shellwords.escape(command)
+          '--', '/bin/sh', '-c', Shellwords.escape(command),
         ].join(' ')
       end
 

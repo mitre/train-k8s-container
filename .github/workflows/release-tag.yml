@@ -1,0 +1,97 @@
+name: Release on Tag
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+  id-token: write  # Required for OIDC trusted publishing
+
+env:
+  RUBY_VERSION: '3.3'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Required for git-cliff to access full history
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure git
+        run: |
+          git config user.email "actions@github.com"
+          git config user.name "GitHub Actions"
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ env.RUBY_VERSION }}
+          bundler-cache: true
+
+      - name: Run tests
+        run: bundle exec rspec spec/train-k8s-container --format documentation
+
+      - name: Run security audit
+        run: |
+          gem install bundler-audit
+          bundler-audit check --update
+
+      - name: Run linting
+        run: bundle exec rake style
+
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+
+      - name: Generate changelog with git-cliff
+        id: changelog
+        uses: orhun/git-cliff-action@v4
+        with:
+          config: cliff.toml
+          args: --tag ${{ github.ref_name }}
+        env:
+          OUTPUT: CHANGELOG.md
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Commit and push changelog
+        run: |
+          git checkout main
+
+          # Copy the generated changelog
+          cp "${{ steps.changelog.outputs.changelog }}" CHANGELOG.md || true
+
+          # Check if there are changes to commit
+          if git diff --quiet CHANGELOG.md 2>/dev/null; then
+            echo "No changelog changes to commit"
+          else
+            git add CHANGELOG.md
+            git commit -m "chore(release): update CHANGELOG for ${{ github.ref_name }}"
+            git push origin main
+          fi
+
+          # Go back to tagged commit for building
+          git checkout "${{ github.ref_name }}"
+
+      - name: Build gem
+        run: gem build train-k8s-container.gemspec
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          body: ${{ steps.changelog.outputs.content }}
+          draft: false
+          prerelease: false
+          files: |
+            train-k8s-container-*.gem
+
+      - name: Configure RubyGems credentials
+        uses: rubygems/configure-rubygems-credentials@v1.0.0
+
+      - name: Publish gem to RubyGems
+        run: gem push train-k8s-container-*.gem

@@ -5,44 +5,87 @@ require_relative 'shell_detector'
 module TrainPlugins
   module K8sContainer
     # Platform detection module for k8s-container transport
+    # Uses Train's built-in platform detection to identify the actual OS
+    # inside the container (e.g., ubuntu, alpine, centos) rather than
+    # returning a generic 'k8s-container' platform.
+    #
+    # Additionally adds 'kubernetes' and 'container' to the family hierarchy
+    # so users can check platform.kubernetes? and platform.container? to know
+    # they are running inside a Kubernetes container.
     module Platform
+      # Detect platform inside the container using Train's standard detection
+      # This allows InSpec resources to work properly by knowing the actual OS
       def platform
-        # Detect container OS to set appropriate families
-        detect_shell # This triggers OS detection in ShellDetector
-        container_os = @shell_detector&.container_os || :unknown
+        return @platform if @platform
 
-        # Declare base families (always present)
-        Train::Platforms.name('k8s-container').in_family('cloud')
-        Train::Platforms.name('k8s-container').in_family('container')
-
-        # Declare OS-specific family based on detected container OS
-        case container_os
-        when :unix
-          Train::Platforms.name('k8s-container').in_family('unix')
-        when :windows
-          Train::Platforms.name('k8s-container').in_family('windows')
-        else
-          # Unknown - log warning if in production (not test)
-          # Don't declare OS family - will cause InSpec resource errors
-          warn 'Unable to detect container OS. InSpec resources may not work.' unless ENV['RSPEC_RUNNING']
+        # Use Train's built-in platform detection scanner
+        # This reads /etc/os-release, /etc/redhat-release, etc. to detect the OS
+        # Train raises PlatformDetectionFailed if it can't detect the platform
+        begin
+          @platform = Train::Platforms::Detect.scan(self)
+        rescue Train::PlatformDetectionFailed
+          # Fall back to unknown platform for distroless/minimal containers
+          @platform = nil
         end
 
-        force_platform!('k8s-container', release: TrainPlugins::K8sContainer::VERSION)
+        # If detection fails, fall back to a generic unix platform
+        # This handles distroless containers where OS detection may fail
+        @platform ||= fallback_platform
+
+        # Add kubernetes and container families so users can check:
+        # - platform.kubernetes? => true
+        # - platform.container? => true
+        add_k8s_families(@platform)
+
+        @platform
       end
 
       private
 
+      # Register kubernetes and container families with Train and add them
+      # to the detected platform's family hierarchy
+      def add_k8s_families(plat)
+        return unless plat
+
+        # Register the families with Train if not already registered
+        # These are added as top-level families (no parent)
+        Train::Platforms.family('kubernetes') unless Train::Platforms.families['kubernetes']
+        Train::Platforms.family('container') unless Train::Platforms.families['container']
+
+        # Append to the family hierarchy so kubernetes? and container? methods work
+        plat.family_hierarchy << 'kubernetes' unless plat.family_hierarchy.include?('kubernetes')
+        plat.family_hierarchy << 'container' unless plat.family_hierarchy.include?('container')
+
+        # Re-add platform methods to include the new family? methods
+        plat.add_platform_methods
+      end
+
+      # Fallback platform when Train's detection fails (distroless, minimal containers)
+      def fallback_platform
+        detect_shell # Trigger shell detection
+        container_os = @shell_detector&.container_os || :unknown
+
+        # Create a minimal platform with appropriate families
+        plat = Train::Platforms.name('unknown')
+
+        case container_os
+        when :unix
+          plat.in_family('unix')
+          plat.in_family('linux')
+        when :windows
+          plat.in_family('windows')
+        end
+
+        force_platform!('unknown', release: 'unknown')
+      end
+
       def detect_shell
-        # When called from Connection, kubectl_client is available (private method)
-        # When called from test doubles, it may not be
         return unless is_a?(Train::Plugins::Transport::BaseConnection)
 
-        # Use send to call private kubectl_client method
         client = send(:kubectl_client)
         @shell_detector ||= ShellDetector.new(client)
         @shell_detector.detect
       rescue NoMethodError
-        # kubectl_client not available (test environment or incomplete setup)
         nil
       end
     end

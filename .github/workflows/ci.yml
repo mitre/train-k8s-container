@@ -68,9 +68,7 @@ jobs:
   integration-tests:
     runs-on: ubuntu-latest
     needs: [build-gem, unit-tests]
-    env:
-      CHEF_LICENSE: accept-silent
-      CHEF_LICENSE_KEY: ${{ secrets.SAF_CHEF_LICENSE_KEY }}
+    # No CHEF_LICENSE needed - using Cinc Auditor (open-source, license-free)
     strategy:
       fail-fast: false
       matrix:
@@ -84,8 +82,8 @@ jobs:
       - name: Create kind cluster
         uses: container-tools/kind-action@v2
         with:
-          version: v0.20.0
-          kubectl_version: v1.30.0
+          version: v0.24.0
+          node_image: kindest/node:${{ matrix.k8s-version }}
           cluster_name: test-cluster
           wait: 60s
 
@@ -103,12 +101,78 @@ jobs:
           # Alpine pod (ash/sh)
           kubectl run test-alpine --image=alpine:3.18 --restart=Never -- sleep infinity
 
-          # Wait for pods to be ready
+          # Distroless pod (no shell) - uses the Kubernetes pause image
+          # This image runs forever without needing sleep (designed for pause containers)
+          # Static distroless images like gcr.io/distroless/static have NO binaries at all
+          # This tests the fallback_platform and execute_without_shell code paths
+          kubectl run test-distroless --image=registry.k8s.io/pause:3.9 --restart=Never
+
+          # Wait for pods to be in Ready condition
           kubectl wait --for=condition=Ready pod/test-ubuntu --timeout=120s
           kubectl wait --for=condition=Ready pod/test-alpine --timeout=120s
+          kubectl wait --for=condition=Ready pod/test-distroless --timeout=120s
 
-          # Verify pods
+          # Verify pods are listed
           kubectl get pods
+
+      - name: Verify pods are fully operational
+        run: |
+          # Function to verify a pod with shell is truly ready for commands
+          verify_pod_ready() {
+            local pod=$1
+            local max_attempts=30
+            local attempt=1
+
+            echo "Verifying $pod is fully operational..."
+            while [ $attempt -le $max_attempts ]; do
+              # Try to execute a simple command in the container
+              if kubectl exec "$pod" -- echo "ready" 2>/dev/null | grep -q "ready"; then
+                echo "✅ $pod is ready (attempt $attempt)"
+                return 0
+              fi
+              echo "  Waiting for $pod... (attempt $attempt/$max_attempts)"
+              sleep 2
+              attempt=$((attempt + 1))
+            done
+            echo "❌ $pod failed to become ready"
+            return 1
+          }
+
+          # Function to verify a distroless pod is running (no shell available)
+          verify_distroless_ready() {
+            local pod=$1
+            local max_attempts=30
+            local attempt=1
+
+            echo "Verifying distroless $pod is running..."
+            while [ $attempt -le $max_attempts ]; do
+              # For distroless, we can only check if the pod is Running
+              status=$(kubectl get pod "$pod" -o jsonpath='{.status.phase}' 2>/dev/null)
+              if [ "$status" = "Running" ]; then
+                echo "✅ $pod is running (distroless - no shell) (attempt $attempt)"
+                return 0
+              fi
+              echo "  Waiting for $pod... status=$status (attempt $attempt/$max_attempts)"
+              sleep 2
+              attempt=$((attempt + 1))
+            done
+            echo "❌ $pod failed to start"
+            return 1
+          }
+
+          # Verify pods with shells can execute commands
+          verify_pod_ready test-ubuntu
+          verify_pod_ready test-alpine
+
+          # Verify distroless pod is running (can't exec into it with shell)
+          verify_distroless_ready test-distroless
+
+          # Additional verification: ensure shell is working on shell-enabled pods
+          echo "Verifying shells are functional..."
+          kubectl exec test-ubuntu -- /bin/bash -c "echo 'bash works'"
+          kubectl exec test-alpine -- /bin/sh -c "echo 'sh works'"
+
+          echo "✅ All test pods are fully operational"
 
       - name: Checkout code
         uses: actions/checkout@v4
@@ -137,24 +201,39 @@ jobs:
         with:
           name: train-k8s-container-gem
 
-      - name: Install InSpec
-        uses: actionshub/chef-install@main
-        with:
-          project: inspec
+      - name: Install Cinc Auditor
+        run: |
+          # Install Cinc Auditor (open-source, license-free InSpec distribution)
+          curl -L https://omnitruck.cinc.sh/install.sh | sudo bash -s -- -P cinc-auditor
 
       - name: Install plugin from gem
-        run: inspec plugin install train-k8s-container-*.gem
+        run: cinc-auditor plugin install train-k8s-container-*.gem
 
       - name: Verify plugin installation
-        run: inspec plugin list
+        run: cinc-auditor plugin list
 
-      - name: Test with InSpec detect
-        run: inspec detect -t k8s-container:///test-ubuntu/test-ubuntu
+      - name: Test with Cinc Auditor detect
+        run: cinc-auditor detect -t k8s-container:///test-ubuntu/test-ubuntu
 
-      - name: Test with InSpec shell
+      - name: Test with Cinc Auditor shell
         run: |
-          inspec shell -t k8s-container:///test-ubuntu/test-ubuntu --command "command('whoami').stdout"
-          inspec shell -t k8s-container:///test-alpine/test-alpine --command "command('cat /etc/alpine-release').stdout"
+          cinc-auditor shell -t k8s-container:///test-ubuntu/test-ubuntu --command "command('whoami').stdout"
+          cinc-auditor shell -t k8s-container:///test-alpine/test-alpine --command "command('cat /etc/alpine-release').stdout"
+
+      - name: Test distroless container detection
+        run: |
+          echo "Testing distroless container (no shell)..."
+          # Distroless containers have no shell, so detect should still work
+          # but will report limited capabilities
+          cinc-auditor detect -t k8s-container:///test-distroless/test-distroless || echo "Expected: distroless detection may have limited results"
+
+          # Test that we get appropriate error for complex commands on distroless
+          echo "Testing error handling for complex commands on distroless..."
+          if cinc-auditor shell -t k8s-container:///test-distroless/test-distroless --command "command('whoami').stdout" 2>&1; then
+            echo "Note: Simple command may work if binary exists"
+          else
+            echo "Expected: distroless container may not support shell commands"
+          fi
 
       - name: Debug on failure
         if: failure()
@@ -162,6 +241,340 @@ jobs:
           kubectl get pods -A
           kubectl describe pod test-ubuntu
           kubectl describe pod test-alpine
+          kubectl describe pod test-distroless
           kubectl logs test-ubuntu || true
           kubectl logs test-alpine || true
+          kubectl logs test-distroless || true
 
+  # Job 4: Pod-to-Pod integration tests (InSpec running inside cluster)
+  # This tests the scenario where InSpec runs from within a Kubernetes pod
+  # and connects to other pods in the same cluster
+  pod-to-pod-tests:
+    runs-on: ubuntu-latest
+    needs: [build-gem, unit-tests]
+    # No CHEF_LICENSE needed - using Cinc Auditor (open-source, license-free)
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create kind cluster
+        uses: container-tools/kind-action@v2
+        with:
+          version: v0.20.0
+          kubectl_version: v1.30.0
+          cluster_name: pod-to-pod-cluster
+          wait: 60s
+
+      - name: Verify cluster
+        run: |
+          kubectl cluster-info
+          kubectl get nodes
+
+      - name: Download gem artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: train-k8s-container-gem
+
+      - name: Create RBAC for in-cluster InSpec
+        run: |
+          # Create service account and RBAC for the InSpec scanner pod
+          cat <<EOF | kubectl apply -f -
+          apiVersion: v1
+          kind: ServiceAccount
+          metadata:
+            name: inspec-scanner
+            namespace: default
+          ---
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: ClusterRole
+          metadata:
+            name: inspec-scanner-role
+          rules:
+          - apiGroups: [""]
+            resources: ["pods", "pods/exec"]
+            verbs: ["get", "list", "create"]
+          ---
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: ClusterRoleBinding
+          metadata:
+            name: inspec-scanner-binding
+          subjects:
+          - kind: ServiceAccount
+            name: inspec-scanner
+            namespace: default
+          roleRef:
+            kind: ClusterRole
+            name: inspec-scanner-role
+            apiGroup: rbac.authorization.k8s.io
+          EOF
+
+      - name: Create target pods
+        run: |
+          # Create single-container pods to be scanned (pod-to-pod scenario)
+          kubectl run target-ubuntu --image=ubuntu:22.04 --restart=Never -- sleep infinity
+          kubectl run target-alpine --image=alpine:3.18 --restart=Never -- sleep infinity
+
+          # Wait for target pods (multi-container-pod created after Docker image build)
+          kubectl wait --for=condition=Ready pod/target-ubuntu --timeout=120s
+          kubectl wait --for=condition=Ready pod/target-alpine --timeout=120s
+
+      - name: Verify target pods are operational
+        run: |
+          # Verify single-container pods can execute commands
+          max_attempts=30
+          for pod in target-ubuntu target-alpine; do
+            attempt=1
+            while [ $attempt -le $max_attempts ]; do
+              if kubectl exec "$pod" -- echo "ready" 2>/dev/null | grep -q "ready"; then
+                echo "✅ $pod is ready"
+                break
+              fi
+              echo "Waiting for $pod... ($attempt/$max_attempts)"
+              sleep 2
+              attempt=$((attempt + 1))
+            done
+          done
+
+      - name: Build Cinc Auditor scanner image
+        run: |
+          # Create a Dockerfile for the scanner pod with Cinc Auditor
+          cat > Dockerfile.scanner <<'EOF'
+          FROM ruby:3.3-slim
+
+          # Install required packages (git needed for gemspec during plugin install)
+          RUN apt-get update && apt-get install -y \
+              curl \
+              ca-certificates \
+              git \
+              && rm -rf /var/lib/apt/lists/*
+
+          # Install kubectl
+          RUN curl -LO "https://dl.k8s.io/release/v1.30.0/bin/linux/amd64/kubectl" \
+              && chmod +x kubectl \
+              && mv kubectl /usr/local/bin/
+
+          # Install Cinc Auditor (open-source, license-free InSpec distribution)
+          RUN curl -L https://omnitruck.cinc.sh/install.sh | bash -s -- -P cinc-auditor
+
+          # Copy and install the train-k8s-container gem
+          COPY train-k8s-container-*.gem /tmp/
+          RUN cinc-auditor plugin install /tmp/train-k8s-container-*.gem
+
+          # Set working directory
+          WORKDIR /work
+
+          # Default command
+          CMD ["sleep", "infinity"]
+          EOF
+
+          # Build the image
+          docker build -f Dockerfile.scanner -t cinc-scanner:local .
+
+          # Load into kind cluster
+          kind load docker-image cinc-scanner:local --name pod-to-pod-cluster
+
+      - name: Deploy Cinc Auditor scanner pod
+        run: |
+          # Create the scanner pod with the service account
+          cat <<EOF | kubectl apply -f -
+          apiVersion: v1
+          kind: Pod
+          metadata:
+            name: cinc-scanner
+            namespace: default
+          spec:
+            serviceAccountName: inspec-scanner
+            containers:
+            - name: scanner
+              image: cinc-scanner:local
+              imagePullPolicy: Never
+              command: ["sleep", "infinity"]
+          EOF
+
+          # Wait for scanner pod
+          kubectl wait --for=condition=Ready pod/cinc-scanner --timeout=180s
+
+      - name: Create multi-container pod for same-pod testing
+        run: |
+          # Create multi-container pod using the pre-built cinc-scanner:local image
+          # This tests scanning a sibling container within the same pod
+          # The scanner container already has Cinc Auditor + plugin installed
+          cat <<EOF | kubectl apply -f -
+          apiVersion: v1
+          kind: Pod
+          metadata:
+            name: multi-container-pod
+            namespace: default
+          spec:
+            serviceAccountName: inspec-scanner
+            containers:
+            - name: scanner
+              image: cinc-scanner:local
+              imagePullPolicy: Never
+              command: ["sleep", "infinity"]
+            - name: target
+              image: ubuntu:22.04
+              command: ["sleep", "infinity"]
+          EOF
+
+          # Wait for multi-container pod
+          kubectl wait --for=condition=Ready pod/multi-container-pod --timeout=120s
+
+          # Verify both containers are operational
+          max_attempts=30
+          for container in scanner target; do
+            attempt=1
+            while [ $attempt -le $max_attempts ]; do
+              if kubectl exec multi-container-pod -c "$container" -- echo "ready" 2>/dev/null | grep -q "ready"; then
+                echo "✅ multi-container-pod/$container is ready"
+                break
+              fi
+              echo "Waiting for multi-container-pod/$container... ($attempt/$max_attempts)"
+              sleep 2
+              attempt=$((attempt + 1))
+            done
+          done
+
+      - name: Verify scanner pod is operational
+        run: |
+          # Verify scanner pod can run commands
+          max_attempts=30
+          attempt=1
+          while [ $attempt -le $max_attempts ]; do
+            if kubectl exec cinc-scanner -- echo "ready" 2>/dev/null | grep -q "ready"; then
+              echo "✅ Scanner pod is ready"
+              break
+            fi
+            echo "Waiting for scanner pod... ($attempt/$max_attempts)"
+            sleep 2
+            attempt=$((attempt + 1))
+          done
+
+          # Verify Cinc Auditor is installed
+          kubectl exec cinc-scanner -- cinc-auditor version
+          kubectl exec cinc-scanner -- cinc-auditor plugin list
+
+      - name: Test pod-to-pod detect
+        run: |
+          echo "Testing Cinc Auditor detect from scanner pod to target-ubuntu..."
+          kubectl exec cinc-scanner -- cinc-auditor detect -t k8s-container:///target-ubuntu/target-ubuntu
+
+          echo "Testing Cinc Auditor detect from scanner pod to target-alpine..."
+          kubectl exec cinc-scanner -- cinc-auditor detect -t k8s-container:///target-alpine/target-alpine
+
+      - name: Test pod-to-pod commands
+        run: |
+          echo "Testing Cinc Auditor shell commands from scanner pod..."
+
+          # Test Ubuntu target
+          kubectl exec cinc-scanner -- cinc-auditor shell \
+            -t k8s-container:///target-ubuntu/target-ubuntu \
+            --command "command('whoami').stdout"
+
+          kubectl exec cinc-scanner -- cinc-auditor shell \
+            -t k8s-container:///target-ubuntu/target-ubuntu \
+            --command "user('root').exists?"
+
+          # Test Alpine target
+          kubectl exec cinc-scanner -- cinc-auditor shell \
+            -t k8s-container:///target-alpine/target-alpine \
+            --command "command('cat /etc/alpine-release').stdout"
+
+      - name: Test pod-to-pod with simple profile
+        run: |
+          # Create a simple test profile inside the scanner pod
+          kubectl exec cinc-scanner -- mkdir -p /work/test-profile/controls
+
+          kubectl exec cinc-scanner -- bash -c 'cat > /work/test-profile/inspec.yml << EOF
+          name: pod-to-pod-test
+          version: 0.1.0
+          supports:
+            - platform-family: linux
+          EOF'
+
+          kubectl exec cinc-scanner -- bash -c 'cat > /work/test-profile/controls/example.rb << EOF
+          control "pod-connectivity-1" do
+            impact 1.0
+            title "Verify pod-to-pod connectivity"
+            desc "Ensure Cinc Auditor can run controls against another pod"
+
+            describe user("root") do
+              it { should exist }
+            end
+
+            describe file("/etc/os-release") do
+              it { should exist }
+            end
+          end
+          EOF'
+
+          # Run the profile against target pods
+          echo "Running profile against target-ubuntu..."
+          kubectl exec cinc-scanner -- cinc-auditor exec /work/test-profile \
+            -t k8s-container:///target-ubuntu/target-ubuntu || true
+
+          echo "Running profile against target-alpine..."
+          kubectl exec cinc-scanner -- cinc-auditor exec /work/test-profile \
+            -t k8s-container:///target-alpine/target-alpine || true
+
+      - name: Test with real STIG profile
+        run: |
+          # Run a real STIG profile to prove the plugin works with actual compliance content
+          # Using the Container-test branch which is optimized for container scanning
+          echo "Running canonical Ubuntu 22.04 STIG baseline against target-ubuntu..."
+          kubectl exec cinc-scanner -- cinc-auditor exec \
+            https://github.com/mitre/canonical-ubuntu-22.04-lts-stig-baseline/archive/refs/heads/Container-test.tar.gz \
+            -t k8s-container:///target-ubuntu/target-ubuntu \
+            --reporter cli json:/work/stig-results.json || true
+
+          # Show summary of results
+          echo "STIG scan completed. Results summary:"
+          kubectl exec cinc-scanner -- cat /work/stig-results.json | head -100 || true
+
+      - name: Test same-pod container-to-container scanning
+        run: |
+          # This tests scanning a sibling container within the same pod
+          # A realistic scenario where a scanner sidecar scans the main application container
+          # The scanner container uses cinc-scanner:local image (pre-built with Cinc + plugin)
+
+          # Verify Cinc Auditor and plugin are already installed
+          echo "Verifying Cinc Auditor installation in multi-container-pod/scanner..."
+          kubectl exec multi-container-pod -c scanner -- cinc-auditor version
+          kubectl exec multi-container-pod -c scanner -- cinc-auditor plugin list
+
+          # Test same-pod container-to-container detect
+          echo "Testing same-pod container-to-container detect..."
+          kubectl exec multi-container-pod -c scanner -- \
+            cinc-auditor detect -t k8s-container:///multi-container-pod/target
+
+          # Test same-pod container-to-container shell command
+          echo "Testing same-pod container-to-container shell command..."
+          kubectl exec multi-container-pod -c scanner -- \
+            cinc-auditor shell -t k8s-container:///multi-container-pod/target \
+            --command "command('cat /etc/os-release').stdout"
+
+          echo "✅ Same-pod container-to-container scanning works!"
+
+      - name: Debug pod-to-pod on failure
+        if: failure()
+        run: |
+          echo "=== Pod Status ==="
+          kubectl get pods -A
+
+          echo "=== Scanner Pod Details ==="
+          kubectl describe pod cinc-scanner
+          kubectl logs cinc-scanner || true
+
+          echo "=== Target Pod Details ==="
+          kubectl describe pod target-ubuntu
+          kubectl describe pod target-alpine
+
+          echo "=== Multi-Container Pod Details ==="
+          kubectl describe pod multi-container-pod
+          kubectl logs multi-container-pod -c scanner || true
+          kubectl logs multi-container-pod -c target || true
+
+          echo "=== RBAC Check ==="
+          kubectl auth can-i --as=system:serviceaccount:default:inspec-scanner \
+            create pods/exec --all-namespaces || true

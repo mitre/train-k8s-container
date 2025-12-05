@@ -18,10 +18,42 @@ module TrainPlugins
         'pwsh.exe', # PowerShell Core 6+
       ].freeze
 
+      # Linux distribution family mappings based on /etc/os-release ID
+      # Maps distribution IDs to Train family names
+      LINUX_FAMILY_MAP = {
+        # Debian family
+        'debian' => 'debian',
+        'ubuntu' => 'debian',
+        'linuxmint' => 'debian',
+        'raspbian' => 'debian',
+        'kali' => 'debian',
+        # RedHat family
+        'rhel' => 'redhat',
+        'centos' => 'redhat',
+        'fedora' => 'fedora',
+        'rocky' => 'redhat',
+        'almalinux' => 'redhat',
+        'ol' => 'redhat', # Oracle Linux
+        'amzn' => 'redhat', # Amazon Linux
+        # SUSE family
+        'sles' => 'suse',
+        'opensuse' => 'suse',
+        'opensuse-leap' => 'suse',
+        'opensuse-tumbleweed' => 'suse',
+        # Alpine
+        'alpine' => 'alpine',
+        # Arch
+        'arch' => 'arch',
+        'manjaro' => 'arch',
+        # Gentoo
+        'gentoo' => 'gentoo',
+      }.freeze
+
       def initialize(kubectl_client)
         @kubectl_client = kubectl_client
         @detected_shell = :not_detected
         @container_os = :unknown
+        @linux_family = nil
       end
 
       def detect
@@ -90,7 +122,7 @@ module TrainPlugins
         end
       end
 
-      attr_reader :container_os
+      attr_reader :container_os, :linux_family
 
       def windows_container?
         @container_os == :windows
@@ -98,6 +130,11 @@ module TrainPlugins
 
       def unix_container?
         @container_os == :unix
+      end
+
+      # Check if container is running Linux (subset of Unix)
+      def linux_container?
+        @container_os == :unix && !@linux_family.nil?
       end
 
       private
@@ -109,6 +146,8 @@ module TrainPlugins
 
         @container_os = if result.exit_status.zero? && result.stdout.strip == 'test'
                           # Unix container (echo works normally)
+                          # Also detect Linux family for more specific platform matching
+                          detect_linux_family
                           :unix
                         elsif result.stderr.match?(/not recognized|not found|command not found/i)
                           # Likely Windows (Unix commands fail)
@@ -119,6 +158,40 @@ module TrainPlugins
                         end
       rescue StandardError
         @container_os = :unknown
+      end
+
+      # Detect Linux distribution family from /etc/os-release
+      # This enables InSpec resources that require os.linux? to work
+      def detect_linux_family
+        # Try to read /etc/os-release which is standard on modern Linux
+        result = @kubectl_client.execute_raw('cat /etc/os-release 2>/dev/null')
+        return unless result.exit_status.zero?
+
+        # Parse the ID field from os-release
+        os_release = result.stdout
+        id_match = os_release.match(/^ID=["']?([^"'\n]+)["']?$/i)
+        return unless id_match
+
+        distro_id = id_match[1].downcase.strip
+        @linux_family = LINUX_FAMILY_MAP[distro_id]
+
+        # If no exact match, try ID_LIKE for derivative distros
+        return if @linux_family
+
+        id_like_match = os_release.match(/^ID_LIKE=["']?([^"'\n]+)["']?$/i)
+        return unless id_like_match
+
+        # ID_LIKE can have multiple values, try each one
+        id_like_match[1].split.each do |like_id|
+          family = LINUX_FAMILY_MAP[like_id.downcase.strip]
+          if family
+            @linux_family = family
+            break
+          end
+        end
+      rescue StandardError
+        # Ignore errors - linux_family will remain nil (defaults to generic linux)
+        nil
       end
     end
   end

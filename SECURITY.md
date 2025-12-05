@@ -1,31 +1,63 @@
 # Security Policy
 
-## Supported Versions
+## Reporting Security Issues
 
-| Version | Supported |
-| ------- | --------- |
-| 2.x.x   | Yes       |
-| 1.3.x   | Yes       |
-| < 1.3   | No        |
+The MITRE SAF team takes security seriously. If you discover a security vulnerability in the train-k8s-container plugin, please report it responsibly.
 
-## Reporting a Vulnerability
+### Contact Information
 
-Please report security vulnerabilities to inspec@progress.com
-
-**DO NOT** open public issues for security vulnerabilities.
+- **Email**: [saf-security@mitre.org](mailto:saf-security@mitre.org)
+- **GitHub**: Use the [Security tab](https://github.com/mitre/train-k8s-container/security) to report vulnerabilities privately
 
 ### What to Include
 
-- Description of the vulnerability
-- Steps to reproduce
-- Potential impact
-- Suggested fix (if available)
+When reporting security issues, please provide:
+
+1. **Description** of the vulnerability
+2. **Steps to reproduce** the issue
+3. **Potential impact** assessment
+4. **Suggested fix** (if you have one)
 
 ### Response Timeline
 
-- **Initial Response**: Within 48 hours
-- **Status Update**: Within 7 days
-- **Fix Timeline**: Depends on severity (critical: 7-14 days, high: 14-30 days)
+- **Acknowledgment**: Within 48 hours
+- **Initial Assessment**: Within 7 days
+- **Fix Timeline**: Varies by severity (critical: 7-14 days, high: 14-30 days)
+
+## Supported Versions
+
+| Version | Supported |
+|---------|-----------|
+| 2.x.x   | Yes       |
+| < 2.0   | No        |
+
+## Security Best Practices
+
+### For Users
+
+- **Keep Updated**: Use the latest version of the plugin
+- **Secure Credentials**: Never commit kubeconfig files to version control
+- **Use RBAC**: Configure minimal Kubernetes RBAC permissions for scanner service accounts
+- **Network Security**: Use network policies to restrict pod-to-pod communication
+
+### For Contributors
+
+- **Dependency Scanning**: Run `bundle audit` before submitting PRs
+- **Credential Handling**: Never log or expose credentials in code
+- **Input Validation**: Sanitize all user inputs
+- **Test Security**: Include security tests for new features
+
+## Security Testing
+
+The plugin includes comprehensive security testing:
+
+```bash
+# Check for vulnerable dependencies
+bundle exec bundle-audit check --update
+
+# Run security workflow locally
+bundle exec rake security
+```
 
 ## Security Measures
 
@@ -47,21 +79,6 @@ This project implements comprehensive automated security scanning:
 - **Retention**: 90 days in GitHub artifacts
 - **Standard**: OWASP CycloneDX specification
 
-### License Compliance
-- **Tool**: license_finder
-- **Frequency**: Every push, pull request, and weekly
-- **Purpose**: Ensure dependency license compliance
-
-## Security Best Practices
-
-When contributing to this project:
-
-1. **Never commit secrets** - Use environment variables or secure vaults
-2. **Keep dependencies updated** - Regularly update gems to patch vulnerabilities
-3. **Review security scan results** - Check CI output for findings
-4. **Follow secure coding practices** - Sanitize inputs, validate data
-5. **Use least privilege** - kubectl credentials should have minimal required permissions
-
 ## Known Security Considerations
 
 ### kubectl Execution
@@ -70,30 +87,14 @@ This plugin executes commands via `kubectl exec`. Security considerations:
 - **Command injection**: Commands are sanitized with `Shellwords.escape`
 - **ANSI sequences**: Output is sanitized to prevent terminal escape attacks (CVE-2021-25743)
 - **Credentials**: Uses kubeconfig authentication (same security as kubectl)
+- **RFC 1123 validation**: Pod and container names are validated
 
 ### Container Access
 - Requires existing kubectl access to target namespace/pod
 - Does not bypass Kubernetes RBAC
 - Runs commands with container's default user permissions
 
-## Vulnerability Disclosure
-
-If a vulnerability is confirmed:
-
-1. We will work on a fix immediately
-2. A security advisory will be published
-3. A patched version will be released
-4. Credit will be given to the reporter (if desired)
-
-## Security Updates
-
-Security updates are released as:
-- **Patch versions** (2.0.x) for minor security fixes
-- **Minor versions** (2.x.0) for significant security enhancements
-- Security fixes may be backported to previous minor versions if still supported
-
 ## Contact
 
-For security concerns: inspec@progress.com
-
-For general questions: Open a GitHub issue (non-security topics only)
+- **Security issues**: [saf-security@mitre.org](mailto:saf-security@mitre.org)
+- **General questions**: [saf@mitre.org](mailto:saf@mitre.org) or open a GitHub issue
