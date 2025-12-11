@@ -28,7 +28,7 @@ Gem::Specification.new do |spec|
 
   # Specify which files should be added to the gem when it is released.
   spec.files = [
-    'lib/train-k8s-container/**/*'
+    'lib/train-k8s-container/**/*',
     'Gemfile',
     'VERSION',
     'train-k8s-container.gemspec'
