@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.2](https://github.com/mitre/train-k8s-container/compare/v2.0.1...v2.0.2) (2025-12-12)
+
+
+### Bug Fixes
+
+* Add post-install warning for correct plugin installation ([832e1c3](https://github.com/mitre/train-k8s-container/commit/832e1c36920d59e51ca34fce786fea4749fc4fc4))
+* Configure release-please to use simple v* tags ([aefc7ba](https://github.com/mitre/train-k8s-container/commit/aefc7baa4f86608dcfe91479491b150850989d43))
+
+
+### Documentation
+
+* Update CHANGELOG for v2.0.1 release ([2237873](https://github.com/mitre/train-k8s-container/commit/2237873cc5142f48ca416242f985be0f41550e4d))
+* Update installation instructions and add post-install warning ([8649575](https://github.com/mitre/train-k8s-container/commit/86495758a6794ae00505e50391f109442487d72a))
+* Update release process documentation for release-please ([a9f4fd3](https://github.com/mitre/train-k8s-container/commit/a9f4fd3ce1da48557aa3442d62ca97ab983b3d21))
+
 ## [2.0.1] - 2025-12-05
 
 ### Fixed
