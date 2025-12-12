@@ -2,6 +2,7 @@
 
 A Train transport plugin that enables Chef InSpec and Cinc Auditor to execute compliance checks against containers running in Kubernetes clusters via kubectl exec.
 
+[![Gem Version](https://badge.fury.io/rb/train-k8s-container-mitre.svg)](https://badge.fury.io/rb/train-k8s-container-mitre)
 [![CI](https://github.com/mitre/train-k8s-container/actions/workflows/ci.yml/badge.svg)](https://github.com/mitre/train-k8s-container/actions/workflows/ci.yml)
 [![Security](https://github.com/mitre/train-k8s-container/actions/workflows/security.yml/badge.svg)](https://github.com/mitre/train-k8s-container/actions/workflows/security.yml)
 
@@ -203,6 +204,18 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 3. Make changes with tests
 4. Run `bundle exec rspec && bundle exec rake style`
 5. Submit a pull request
+
+### Versioning
+
+This project uses [Conventional Commits](https://www.conventionalcommits.org/) for automated releases:
+
+| Commit Prefix | Version Bump | Example |
+|---------------|--------------|---------|
+| `feat:` | Minor (2.1.0) | New features |
+| `fix:` | Patch (2.0.1) | Bug fixes |
+| `feat!:` | Major (3.0.0) | Breaking changes |
+
+See [CONTRIBUTING.md](CONTRIBUTING.md#versioning-and-commit-messages) for full details.
 
 ## Security
 

@@ -135,60 +135,149 @@ open coverage/index.html
 5. **CI Passing**: All GitHub Actions checks must pass
 6. **Merge**: Maintainers will merge approved PRs
 
+## Versioning and Commit Messages
+
+This project uses [Conventional Commits](https://www.conventionalcommits.org/) and [Semantic Versioning](https://semver.org/). Your commit message prefix determines how the version number changes.
+
+**Official References:**
+- [Conventional Commits Specification](https://www.conventionalcommits.org/en/v1.0.0/)
+- [Angular Commit Message Guidelines](https://github.com/angular/angular/blob/main/CONTRIBUTING.md#-commit-message-format) (original source)
+- [Semantic Versioning](https://semver.org/)
+
+### Commit Prefix → Version Bump
+
+| Commit Prefix | Version Change | When to Use |
+|---------------|----------------|-------------|
+| `feat:` | **Minor** (2.0.0 → 2.1.0) | New features, capabilities, or enhancements |
+| `fix:` | **Patch** (2.0.0 → 2.0.1) | Bug fixes, corrections, error handling |
+| `docs:` | **Patch** | Documentation changes only |
+| `style:` | **Patch** | Code style, formatting (no logic change) |
+| `refactor:` | **Patch** | Code restructuring (no behavior change) |
+| `perf:` | **Patch** | Performance improvements |
+| `test:` | **Patch** | Adding or updating tests |
+| `chore:` | **Patch** | Maintenance, dependencies, tooling |
+| `ci:` | **Patch** | CI/CD pipeline changes |
+| `build:` | **Patch** | Build system changes |
+| `revert:` | **Patch** | Reverting a previous commit |
+| `feat!:` | **Major** (2.0.0 → 3.0.0) | Breaking changes (note the `!`) |
+| `fix!:` | **Major** | Breaking bug fix |
+| `BREAKING CHANGE:` | **Major** | In commit body, forces major bump |
+
+### Type Descriptions
+
+- **feat**: A new feature for the user (not a build script feature)
+- **fix**: A bug fix for the user (not a build script fix)
+- **docs**: Documentation only changes (README, CONTRIBUTING, inline docs)
+- **style**: Changes that don't affect code meaning (whitespace, formatting, semicolons)
+- **refactor**: Code change that neither fixes a bug nor adds a feature
+- **perf**: Code change that improves performance
+- **test**: Adding missing tests or correcting existing tests
+- **chore**: Changes to build process, auxiliary tools, libraries
+- **ci**: Changes to CI configuration files and scripts
+- **build**: Changes that affect the build system or external dependencies
+- **revert**: Reverts a previous commit (include reverted commit SHA in body)
+
+### Examples
+
+```bash
+# Patch version bump (2.1.0 → 2.1.1)
+git commit -m "fix: handle nil response in platform detection"
+git commit -m "docs: update installation instructions"
+git commit -m "chore: update rubocop dependency"
+git commit -m "test: add integration tests for Alpine containers"
+
+# Minor version bump (2.1.0 → 2.2.0)
+git commit -m "feat: add support for Windows containers"
+git commit -m "feat: add retry logic for transient kubectl failures"
+
+# Major version bump (2.1.0 → 3.0.0)
+git commit -m "feat!: change URI format to k8s://namespace/pod/container"
+git commit -m "fix!: remove deprecated connection options"
+```
+
+### Commit Message Format
+
+```
+<type>(<optional scope>): <description>
+
+[optional body]
+
+[optional footer(s)]
+```
+
+**Examples:**
+```bash
+# Simple
+git commit -m "fix: handle empty shell response"
+
+# With scope
+git commit -m "feat(platform): add FreeBSD detection"
+
+# With body
+git commit -m "feat: add Windows container support
+
+This adds support for Windows containers running in Kubernetes.
+Tested with Windows Server 2022 and Windows Server Core images."
+
+# Breaking change with body
+git commit -m "feat!: require Ruby 3.1+
+
+BREAKING CHANGE: Ruby 2.7 and 3.0 are no longer supported.
+This allows us to use pattern matching and other Ruby 3.1 features."
+```
+
 ## Release Process
 
-Releases are automated using [release-please](https://github.com/googleapis/release-please) and managed by project maintainers.
+Releases are **fully automated** using [release-please](https://github.com/googleapis/release-please) with auto-merge enabled.
 
 ### How It Works
 
-1. **Commit with Conventional Commits**: Use prefixes like `feat:`, `fix:`, `docs:`, `chore:`
-   - `feat:` triggers a minor version bump (e.g., 2.0.0 → 2.1.0)
-   - `fix:` triggers a patch version bump (e.g., 2.0.0 → 2.0.1)
-   - `feat!:` or `BREAKING CHANGE:` triggers a major version bump
-
-2. **Release PR Created Automatically**: When commits are pushed to `main`, release-please creates/updates a Release PR that:
-   - Bumps the version in `VERSION` file
+1. **Release PR Created Automatically**: When commits are pushed to `main`, release-please creates/updates a Release PR with auto-merge enabled that:
+   - Bumps the version in `lib/train-k8s-container/version.rb`
    - Updates `CHANGELOG.md` with commit messages
    - Shows the proposed version change
 
-3. **Merge to Release**: When maintainers merge the Release PR:
-   - A git tag is created (e.g., `v2.1.0`)
-   - GitHub Actions builds and publishes the gem to RubyGems.org
-   - A GitHub Release is created with auto-generated notes
+2. **Auto-Merge When CI Passes**: The Release PR automatically merges once all CI checks pass:
+   - Unit tests (Ruby 3.1, 3.2, 3.3)
+   - Integration tests (Kubernetes 1.29, 1.30, 1.31)
+   - Security audit
+   - Branch protection enforces all checks must pass
 
-### Example Workflow
+3. **Automatic Publishing**: After merge, release-please creates a GitHub Release which triggers:
+   - Gem build
+   - Publish to RubyGems.org (via OIDC trusted publishing)
+   - Gem artifact attached to GitHub Release
+
+### Complete Automated Flow
+
+```
+Push commit → CI runs → Release PR created (auto-merge enabled)
+                                    ↓
+                            CI passes on PR
+                                    ↓
+                            PR auto-merges
+                                    ↓
+                        GitHub Release created
+                                    ↓
+                        Gem published to RubyGems
+```
+
+### Example
 
 ```bash
 # Make changes with conventional commit messages
 git commit -m "feat: add support for Windows containers"
 git push origin main
 
-# release-please automatically creates a PR like:
-# "chore(main): release 2.1.0"
-
-# After review, maintainer merges the PR
-# → Tag v2.1.0 is created
-# → Gem is published to RubyGems.org
+# Everything else is automatic:
+# 1. release-please creates PR: "chore(main): release 2.2.0"
+# 2. CI runs on the PR
+# 3. PR auto-merges when CI passes
+# 4. Tag v2.2.0 is created
+# 5. Gem is published to RubyGems.org
 ```
 
-### Manual Releases (Emergency Only)
-
-For hotfixes that need immediate release without waiting for release-please:
-
-```bash
-# Update VERSION manually
-echo "2.0.2" > VERSION
-
-# Update CHANGELOG.md manually
-
-# Commit, tag, and push
-git add VERSION CHANGELOG.md
-git commit -m "chore: release v2.0.2"
-git tag v2.0.2
-git push origin main --tags
-```
-
-**Note:** Manual releases should be rare. Prefer the automated release-please flow.
+No manual intervention required for releases.
 
 ## Getting Help
 

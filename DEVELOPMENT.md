@@ -295,29 +295,24 @@ See `.github/workflows/ci.yml` for details.
 
 ## Releasing
 
-Releases are automated using [release-please](https://github.com/googleapis/release-please).
+Releases are **fully automated** using [release-please](https://github.com/googleapis/release-please) with auto-merge enabled. No manual intervention required.
 
-### Automated Release Process (Recommended)
+### How It Works
 
-1. **Make commits using Conventional Commits format**:
+1. **Push commits with Conventional Commits format**:
    ```bash
    git commit -m "feat: add Windows container support"
    git commit -m "fix: handle empty shell response"
-   git commit -m "docs: update installation instructions"
-   ```
-
-2. **Push to main** - release-please will automatically create a Release PR:
-   ```bash
    git push origin main
-   # release-please creates PR: "chore(main): release 2.1.0"
    ```
 
-3. **Review and merge the Release PR** - this triggers:
-   - Version bump in `VERSION` file
-   - `CHANGELOG.md` update
-   - Git tag creation (e.g., `v2.1.0`)
-   - Gem build and publish to RubyGems.org
-   - GitHub Release creation
+2. **Automatic flow**:
+   - Release-please creates/updates a Release PR with auto-merge enabled
+   - CI runs on the PR (unit tests, integration tests, security audit)
+   - Branch protection requires all checks to pass
+   - PR auto-merges when CI is green
+   - Release-please creates a GitHub Release
+   - `release-tag.yml` triggers and publishes gem to RubyGems.org
 
 ### Conventional Commits Cheat Sheet
 
@@ -329,25 +324,28 @@ Releases are automated using [release-please](https://github.com/googleapis/rele
 | `chore:` | Patch | `chore: update dependencies` |
 | `feat!:` | Major (2.0.0 → 3.0.0) | `feat!: change URI format` |
 
-### Manual Release (Emergency Only)
+### Complete Flow Diagram
 
-For hotfixes that can't wait for the release-please flow:
-
-```bash
-# Update VERSION file
-echo "2.0.2" > VERSION
-
-# Update CHANGELOG.md manually
-
-# Commit and tag
-git add VERSION CHANGELOG.md
-git commit -m "chore: release v2.0.2"
-git tag v2.0.2
-git push origin main --tags
+```
+Push commit → CI runs on main → Release-please creates PR (auto-merge on)
+                                              ↓
+                                     CI runs on PR
+                                              ↓
+                                   PR auto-merges when green
+                                              ↓
+                                 GitHub Release created (v2.x.x)
+                                              ↓
+                               release-tag.yml triggers
+                                              ↓
+                              Gem published to RubyGems.org
 ```
 
-The `release-tag.yml` workflow triggers on tag push and will:
-1. Run tests
-2. Build gem
-3. Publish to RubyGems.org (via OIDC trusted publishing)
-4. Create GitHub release
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `lib/train-k8s-container/version.rb` | VERSION constant (updated by release-please) |
+| `release-please-config.json` | Release-please configuration |
+| `.release-please-manifest.json` | Current version tracking |
+| `.github/workflows/release-please.yml` | Creates PRs with auto-merge |
+| `.github/workflows/release-tag.yml` | Publishes gem on release |
