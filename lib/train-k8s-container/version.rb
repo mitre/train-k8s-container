@@ -2,6 +2,6 @@
 
 module TrainPlugins
   module K8sContainer
-    VERSION = File.read(File.expand_path('../../VERSION', __dir__)).strip
+    VERSION = '2.0.2'.freeze
   end
 end
