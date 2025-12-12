@@ -30,7 +30,7 @@ This plugin allows InSpec/Cinc Auditor to scan containers running in Kubernetes 
 **Important:** Always install Train plugins using `inspec plugin install` or `cinc-auditor plugin install`. Do NOT use `gem install` directly, as this can cause issues with plugin discovery and management.
 
 ```bash
-# Using Cinc Auditor (recommended - open source, license-free)
+# Using Cinc Auditor (open source, license-free)
 cinc-auditor plugin install train-k8s-container-mitre
 
 # Or using Chef InSpec
@@ -237,13 +237,12 @@ This project is maintained by the MITRE SAF (Security Automation Framework) team
 
 ## Acknowledgments
 
-This project is a fork of [inspec/train-k8s-container](https://github.com/inspec/train-k8s-container), significantly enhanced with:
+This project is a fork of [inspec/train-k8s-container](https://github.com/inspec/train-k8s-container), enhanced with:
 
 - Train v2 plugin architecture
 - Detect+Context platform detection pattern
 - Comprehensive CI/CD with pod-to-pod testing
-- Security hardening and SBOM generation
-- MITRE SAF ecosystem integration
+- Automated releases via release-please
 
 ---
 
