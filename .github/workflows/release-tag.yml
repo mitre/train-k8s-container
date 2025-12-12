@@ -3,10 +3,6 @@ name: Release on Tag
 on:
   release:
     types: [published]
-  # Keep push trigger as backup for manual tag pushes
-  push:
-    tags:
-      - 'v*'
 
 permissions:
   contents: write
@@ -32,21 +28,10 @@ jobs:
       - name: Build gem
         run: gem build train-k8s-container.gemspec
 
-      - name: Upload gem to existing release
-        if: github.event_name == 'release'
+      - name: Upload gem to release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.event.release.tag_name }}
-          files: |
-            train-k8s-container-mitre-*.gem
-
-      - name: Create GitHub Release (for tag push)
-        if: github.event_name == 'push'
-        uses: softprops/action-gh-release@v2
-        with:
-          generate_release_notes: true
-          draft: false
-          prerelease: false
           files: |
             train-k8s-container-mitre-*.gem
 
