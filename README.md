@@ -26,12 +26,14 @@ This plugin allows InSpec/Cinc Auditor to scan containers running in Kubernetes 
 
 ### From RubyGems (Recommended)
 
+**Important:** Always install Train plugins using `inspec plugin install` or `cinc-auditor plugin install`. Do NOT use `gem install` directly, as this can cause issues with plugin discovery and management.
+
 ```bash
 # Using Cinc Auditor (recommended - open source, license-free)
-cinc-auditor plugin install train-k8s-container
+cinc-auditor plugin install train-k8s-container-mitre
 
 # Or using Chef InSpec
-inspec plugin install train-k8s-container
+inspec plugin install train-k8s-container-mitre
 ```
 
 ### From Source
@@ -40,7 +42,7 @@ inspec plugin install train-k8s-container
 git clone https://github.com/mitre/train-k8s-container.git
 cd train-k8s-container
 gem build train-k8s-container.gemspec
-cinc-auditor plugin install train-k8s-container-*.gem
+cinc-auditor plugin install train-k8s-container-mitre-*.gem
 ```
 
 ## Prerequisites

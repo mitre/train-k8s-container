@@ -36,6 +36,28 @@ Gem::Specification.new do |spec|
 
   spec.require_paths = ['lib']
 
+  spec.post_install_message = <<~MESSAGE
+
+    ╔════════════════════════════════════════════════════════════════════╗
+    ║  train-k8s-container-mitre installed successfully!                 ║
+    ╠════════════════════════════════════════════════════════════════════╣
+    ║                                                                    ║
+    ║  WARNING: If you installed this gem using 'gem install', you       ║
+    ║  may experience issues with 'inspec plugin list'.                  ║
+    ║                                                                    ║
+    ║  RECOMMENDED: Install using the InSpec/Cinc plugin system:         ║
+    ║                                                                    ║
+    ║    gem uninstall train-k8s-container-mitre                         ║
+    ║    cinc-auditor plugin install train-k8s-container-mitre           ║
+    ║                                                                    ║
+    ║  Or for Chef InSpec:                                               ║
+    ║                                                                    ║
+    ║    inspec plugin install train-k8s-container-mitre                 ║
+    ║                                                                    ║
+    ╚════════════════════════════════════════════════════════════════════╝
+
+  MESSAGE
+
   # NOTE: Do not list 'train' or 'inspec' as dependencies.
   # Train plugins are loaded within InSpec's environment, which already provides
   # train, train-core, and all their dependencies. Declaring train as a dependency
