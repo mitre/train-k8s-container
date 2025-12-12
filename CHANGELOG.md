@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0](https://github.com/mitre/train-k8s-container/compare/v2.0.3...v2.1.0) (2025-12-12)
+
+
+### Features
+
+* Enable auto-merge for release-please PRs ([f098f5a](https://github.com/mitre/train-k8s-container/commit/f098f5a150d5532b4def7702e9427448d65764bb))
+
+
+### Bug Fixes
+
+* Remove duplicate push trigger from release workflow ([f1b4c87](https://github.com/mitre/train-k8s-container/commit/f1b4c872f8e1617c38149bc0172ba20e49ba3dc8))
+
 ## [2.0.3](https://github.com/mitre/train-k8s-container/compare/v2.0.2...v2.0.3) (2025-12-12)
 
 
