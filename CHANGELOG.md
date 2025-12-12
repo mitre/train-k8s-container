@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.1](https://github.com/mitre/train-k8s-container/compare/v2.1.0...v2.1.1) (2025-12-12)
+
+
+### Bug Fixes
+
+* Parse PR number from JSON in auto-merge step ([09a3667](https://github.com/mitre/train-k8s-container/commit/09a3667cb67010c58837d3ff1ddcf5b197dc3d0d))
+
+
+### Documentation
+
+* Add ARCHITECTURE.md with technical overview ([acfe73a](https://github.com/mitre/train-k8s-container/commit/acfe73a5ad16faa9b481d0c7802d2a8f6f64efb9))
+* Enhance ARCHITECTURE.md with comprehensive technical details ([519675d](https://github.com/mitre/train-k8s-container/commit/519675db04d3766ac3d00575989e748da738a7ea))
+* Fix inaccurate claims in README acknowledgments ([fa2e53c](https://github.com/mitre/train-k8s-container/commit/fa2e53c0eee41638edfa04a583bdcea4fd7eb272))
+* Update release process documentation for automated workflow ([23d1fcf](https://github.com/mitre/train-k8s-container/commit/23d1fcfb38b1415c12029564b92dbcb9df34715d))
+
 ## [2.1.0](https://github.com/mitre/train-k8s-container/compare/v2.0.3...v2.1.0) (2025-12-12)
 
 
