@@ -137,12 +137,58 @@ open coverage/index.html
 
 ## Release Process
 
-Releases are managed by project maintainers:
+Releases are automated using [release-please](https://github.com/googleapis/release-please) and managed by project maintainers.
 
-1. Version bump in `VERSION` file
-2. Update `CHANGELOG.md`
-3. Create release tag (e.g., `v2.0.0`)
-4. GitHub Actions automatically publishes to RubyGems.org
+### How It Works
+
+1. **Commit with Conventional Commits**: Use prefixes like `feat:`, `fix:`, `docs:`, `chore:`
+   - `feat:` triggers a minor version bump (e.g., 2.0.0 → 2.1.0)
+   - `fix:` triggers a patch version bump (e.g., 2.0.0 → 2.0.1)
+   - `feat!:` or `BREAKING CHANGE:` triggers a major version bump
+
+2. **Release PR Created Automatically**: When commits are pushed to `main`, release-please creates/updates a Release PR that:
+   - Bumps the version in `VERSION` file
+   - Updates `CHANGELOG.md` with commit messages
+   - Shows the proposed version change
+
+3. **Merge to Release**: When maintainers merge the Release PR:
+   - A git tag is created (e.g., `v2.1.0`)
+   - GitHub Actions builds and publishes the gem to RubyGems.org
+   - A GitHub Release is created with auto-generated notes
+
+### Example Workflow
+
+```bash
+# Make changes with conventional commit messages
+git commit -m "feat: add support for Windows containers"
+git push origin main
+
+# release-please automatically creates a PR like:
+# "chore(main): release 2.1.0"
+
+# After review, maintainer merges the PR
+# → Tag v2.1.0 is created
+# → Gem is published to RubyGems.org
+```
+
+### Manual Releases (Emergency Only)
+
+For hotfixes that need immediate release without waiting for release-please:
+
+```bash
+# Update VERSION manually
+echo "2.0.2" > VERSION
+
+# Update CHANGELOG.md manually
+
+# Commit, tag, and push
+git add VERSION CHANGELOG.md
+git commit -m "chore: release v2.0.2"
+git tag v2.0.2
+git push origin main --tags
+```
+
+**Note:** Manual releases should be rare. Prefer the automated release-please flow.
 
 ## Getting Help
 

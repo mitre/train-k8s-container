@@ -295,21 +295,59 @@ See `.github/workflows/ci.yml` for details.
 
 ## Releasing
 
-Releases are automated via GitHub Actions when a tag is pushed:
+Releases are automated using [release-please](https://github.com/googleapis/release-please).
+
+### Automated Release Process (Recommended)
+
+1. **Make commits using Conventional Commits format**:
+   ```bash
+   git commit -m "feat: add Windows container support"
+   git commit -m "fix: handle empty shell response"
+   git commit -m "docs: update installation instructions"
+   ```
+
+2. **Push to main** - release-please will automatically create a Release PR:
+   ```bash
+   git push origin main
+   # release-please creates PR: "chore(main): release 2.1.0"
+   ```
+
+3. **Review and merge the Release PR** - this triggers:
+   - Version bump in `VERSION` file
+   - `CHANGELOG.md` update
+   - Git tag creation (e.g., `v2.1.0`)
+   - Gem build and publish to RubyGems.org
+   - GitHub Release creation
+
+### Conventional Commits Cheat Sheet
+
+| Prefix | Version Bump | Example |
+|--------|-------------|---------|
+| `feat:` | Minor (2.0.0 → 2.1.0) | `feat: add retry logic` |
+| `fix:` | Patch (2.0.0 → 2.0.1) | `fix: handle nil response` |
+| `docs:` | Patch | `docs: update README` |
+| `chore:` | Patch | `chore: update dependencies` |
+| `feat!:` | Major (2.0.0 → 3.0.0) | `feat!: change URI format` |
+
+### Manual Release (Emergency Only)
+
+For hotfixes that can't wait for the release-please flow:
 
 ```bash
 # Update VERSION file
-echo "2.1.0" > VERSION
+echo "2.0.2" > VERSION
+
+# Update CHANGELOG.md manually
 
 # Commit and tag
 git add VERSION CHANGELOG.md
-git commit -m "Release v2.1.0"
-git tag v2.1.0
+git commit -m "chore: release v2.0.2"
+git tag v2.0.2
 git push origin main --tags
 ```
 
-The `release-tag.yml` workflow will:
+The `release-tag.yml` workflow triggers on tag push and will:
 1. Run tests
 2. Build gem
-3. Publish to RubyGems.org
+3. Publish to RubyGems.org (via OIDC trusted publishing)
 4. Create GitHub release
