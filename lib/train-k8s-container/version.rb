@@ -2,6 +2,6 @@
 
 module TrainPlugins
   module K8sContainer
-    VERSION = '2.0.2'.freeze
+    VERSION = '2.0.2'
   end
 end
