@@ -532,11 +532,14 @@ jobs:
           echo "STIG scan completed. Results summary:"
           kubectl exec cinc-scanner -- cat /work/stig-results.json | head -100 || true
 
+      - name: copy artifacts from pod
+        run: kubectl cp cinc-scanner:/work/stig-results.json train-k8s-container-scan-results.json
+
       - name: Upload scan artifact
         uses: actions/upload-artifact@v4
         with:
           name: train-k8s-container-scan
-          path: train-k8s-container-scan-*.json
+          path: train-k8s-container-scan-results.json
           retention-days: 5
 
       - name: Test same-pod container-to-container scanning
