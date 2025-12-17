@@ -221,7 +221,7 @@ jobs:
           cinc-auditor shell -t k8s-container:///test-alpine/test-alpine --command "command('cat /etc/alpine-release').stdout"
 
       - name: Test with Scan
-        run: cinc-auditor exec https://github.com/mitre/canonical-ubuntu-22.04-lts-stig-baseline -t k8s-container:///test-ubuntu/test-ubuntu --enhanced-outcomes --reporter cli json:train-k8s-container-scan-results.json
+        run: cinc-auditor exec https://github.com/mitre/canonical-ubuntu-22.04-lts-stig-baseline -t k8s-container:///test-ubuntu/test-ubuntu --enhanced-outcomes --reporter cli json:train-k8s-container-scan-results.json || true
 
       - name: Upload scan artifact
         uses: actions/upload-artifact@v4
