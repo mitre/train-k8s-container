@@ -7,6 +7,7 @@ on:
       - master
       - v2.0
       - 'feature/**'
+      - GitHub-Artifact-Creation
   pull_request:
     branches: [main, master]
 
@@ -531,6 +532,13 @@ jobs:
           # Show summary of results
           echo "STIG scan completed. Results summary:"
           kubectl exec cinc-scanner -- cat /work/stig-results.json | head -100 || true
+
+      - name: Upload gem artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: train-k8s-container-scan-results
+          path: train-k8s-container-scan-results*.json
+          retention-days: 5    
 
       - name: Test same-pod container-to-container scanning
         run: |
