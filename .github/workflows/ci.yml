@@ -220,6 +220,16 @@ jobs:
           cinc-auditor shell -t k8s-container:///test-ubuntu/test-ubuntu --command "command('whoami').stdout"
           cinc-auditor shell -t k8s-container:///test-alpine/test-alpine --command "command('cat /etc/alpine-release').stdout"
 
+      - name: Test with Scan
+        run: cinc-auditor exec https://github.com/mitre/canonical-ubuntu-22.04-lts-stig-baseline -t k8s-container:///test-ubuntu/test-ubuntu --enhanced-outcomes --reporter cli json:train-k8s-container-scan-results.json
+
+      - name: Upload scan artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: train-k8s-container-scan
+          path: train-k8s-container-scan-results.json
+          retention-days: 5        
+
       - name: Test distroless container detection
         run: |
           echo "Testing distroless container (no shell)..."
@@ -531,16 +541,6 @@ jobs:
           # Show summary of results
           echo "STIG scan completed. Results summary:"
           kubectl exec cinc-scanner -- cat /work/stig-results.json | head -100 || true
-
-      - name: copy artifacts from pod
-        run: kubectl cp cinc-scanner:/work/stig-results.json train-k8s-container-scan-results.json
-
-      - name: Upload scan artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: train-k8s-container-scan
-          path: train-k8s-container-scan-results.json
-          retention-days: 5
 
       - name: Test same-pod container-to-container scanning
         run: |
