@@ -225,7 +225,6 @@ jobs:
         run: |
           kubectl exec test-ubuntu -c test-ubuntu -- cat /proc/cpuinfo 
           kubectl exec test-ubuntu -c test-ubuntu -- ls -lah /sys/devices/virtual/misc/kvm
-        #  kubectl exec test-ubuntu -c test-ubuntu -- ls -lah /.dockerenv
           kubectl exec test-ubuntu -c test-ubuntu -- ls -lah /.dockerinit
 
       - name: Test with Scan
