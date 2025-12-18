@@ -222,8 +222,8 @@ jobs:
         run: cinc-auditor shell -t k8s-container:///test-ubuntu/test-ubuntu --command "virtualization.system"
 
       - name: Test for KVM files
-        run: kubectl exec ubuntu-test -c ubuntu-test -- cat /proc/cpuinfo
-             kubectl exec ubuntu-test -c ubuntu-test -- cat /sys/devices/virtual/misc/kvm
+        run: kubectl exec test-ubuntu -c test-ubuntu -- cat /proc/cpuinfo
+             kubectl exec test-ubuntu -c test-ubuntu -- cat /sys/devices/virtual/misc/kvm
       - name: Test with Scan
         run: cinc-auditor exec https://github.com/mitre/canonical-ubuntu-22.04-lts-stig-baseline -t k8s-container:///test-ubuntu/test-ubuntu --enhanced-outcomes --reporter cli json:train-k8s-container-scan-results.json || true
 
