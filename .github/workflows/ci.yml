@@ -224,7 +224,7 @@ jobs:
         run: |
           kubectl exec test-ubuntu -c test-ubuntu -- cat /proc/cpuinfo 
           kubectl exec test-ubuntu -c test-ubuntu -- ls -lah /sys/devices/virtual/misc/kvm
-          kubectl exec test-ubuntu -c test-ubuntu -- ls -lah /.dockerinit
+          kubectl exec test-ubuntu -c test-ubuntu -- ls -lah /.dockerenv
 
       - name: Test with Scan
         run: cinc-auditor exec https://github.com/mitre/canonical-ubuntu-22.04-lts-stig-baseline -t k8s-container:///test-ubuntu/test-ubuntu --enhanced-outcomes --reporter cli json:train-k8s-container-scan-results.json || true
