@@ -228,7 +228,10 @@ jobs:
         with:
           name: train-k8s-container-scan
           path: train-k8s-container-scan-results.json
-          retention-days: 5        
+          retention-days: 5   
+
+      - name: Check Virtualization System
+        run: cinc-auditor shell -t k8s-container:///test-ubuntu/test-ubuntu --command "virtualization.system"         
 
       - name: Test distroless container detection
         run: |
