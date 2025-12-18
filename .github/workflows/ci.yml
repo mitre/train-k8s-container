@@ -77,11 +77,10 @@ jobs:
           - v1.31.0
 
     steps:
-      - name: Create kind cluster
-        uses: container-tools/kind-action@v2
+      - name: Create minikube cluster
+        uses: medyagh/setup-minikube@latest
         with:
-          version: v0.24.0
-          node_image: kindest/node:${{ matrix.k8s-version }}
+          kubernetes-version: ${{ matrix.k8s-version }}
           cluster_name: test-cluster
           wait: 60s
 
