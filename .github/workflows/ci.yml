@@ -262,6 +262,9 @@ jobs:
           kubectl logs test-alpine || true
           kubectl logs test-distroless || true
 
+      - name: Delete minikube cluster
+        run: minikube delete
+
   # Job 4: Pod-to-Pod integration tests (InSpec running inside cluster)
   # This tests the scenario where InSpec runs from within a Kubernetes pod
   # and connects to other pods in the same cluster
