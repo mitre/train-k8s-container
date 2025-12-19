@@ -269,6 +269,7 @@ jobs:
           kubectl logs test-distroless || true
 
       - name: Delete minikube cluster
+        if: always()
         run: minikube delete
 
   # Job 4: Pod-to-Pod integration tests (InSpec running inside cluster)
