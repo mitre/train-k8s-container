@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0](https://github.com/mitre/train-k8s-container/compare/v2.1.1...v2.2.0) (2025-12-24)
+
+
+### Features
+
+* Add BEADS-BOARD.md and v1/v2 comparison test data ([35bbf46](https://github.com/mitre/train-k8s-container/commit/35bbf46fc25d84ef88e9953a628cf3a4aa8d2da0))
+
 ## [2.1.1](https://github.com/mitre/train-k8s-container/compare/v2.1.0...v2.1.1) (2025-12-12)
 
 
