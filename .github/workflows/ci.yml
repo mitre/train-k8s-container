@@ -239,7 +239,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: train-k8s-container-scan-v1_3_1
-          path: train-k8s-container-scan-results-v1_3_1.json
+          path: train-k8s-container-scan-results.json
           retention-days: 5            
 
       - name: Test distroless container detection
