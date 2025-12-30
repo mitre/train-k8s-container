@@ -203,14 +203,14 @@ jobs:
           # Install Cinc Auditor (open-source, license-free InSpec distribution)
           curl -L https://omnitruck.cinc.sh/install.sh | sudo bash -s -- -P cinc-auditor
         
-#      - name: Install plugin from GitHub
-#        run: git clone https://github.com/inspec/train-k8s-container.git /tmp/train-k8s-container
+      - name: Install plugin from GitHub
+        run: git clone https://github.com/inspec/train-k8s-container.git /tmp/train-k8s-container
 
-#      - name: Install plugin from file path
-#        run: cinc-auditor plugin install /tmp/train-k8s-container
+      - name: Install plugin from file path
+        run: cinc-auditor plugin install /tmp/train-k8s-container
 
-      - name: Install plugin from gem
-        run: cinc-auditor plugin install train-k8s-container-mitre -v 2.2.0
+#      - name: Install plugin from gem
+#        run: cinc-auditor plugin install train-k8s-container-mitre -v 2.2.0
 
       - name: Verify plugin installation
         run: cinc-auditor plugin list
@@ -238,8 +238,8 @@ jobs:
       - name: Upload scan artifact
         uses: actions/upload-artifact@v4
         with:
-          name: train-k8s-container-scan
-          path: train-k8s-container-scan-results.json
+          name: train-k8s-container-scan-v1_3_1
+          path: train-k8s-container-scan-results-v1_3_1.json
           retention-days: 5            
 
       - name: Test distroless container detection
