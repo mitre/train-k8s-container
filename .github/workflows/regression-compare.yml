@@ -1,0 +1,296 @@
+name: Regression Comparison
+
+# Compare behavior between original train-k8s-container gem and MITRE fork
+# Ensures the fork produces equivalent results for the same tests
+
+on:
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:  # Allow manual trigger
+
+env:
+  RUBY_VERSION: '3.3'
+  K8S_VERSION: 'v1.30.0'
+
+jobs:
+  regression-compare:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ env.RUBY_VERSION }}
+
+      - name: Build MITRE fork gem
+        run: gem build train-k8s-container.gemspec
+
+      - name: Setup test cluster
+        uses: ./.github/actions/setup-test-cluster
+        with:
+          k8s-version: ${{ env.K8S_VERSION }}
+          cluster-name: regression-cluster
+          create-ubuntu: 'true'
+          create-alpine: 'false'
+          create-distroless: 'false'
+
+      - name: Setup Cinc Auditor with SAF CLI
+        uses: ./.github/actions/setup-cinc-auditor
+        with:
+          install-saf-cli: 'true'
+
+      - name: Create regression test profile
+        run: |
+          mkdir -p test/profiles/regression-test/controls
+
+          cat > test/profiles/regression-test/inspec.yml << 'EOF'
+          name: regression-test
+          title: Regression Test Profile for train-k8s-container
+          version: 1.0.0
+          supports:
+            - platform-family: linux
+          EOF
+
+          cat > test/profiles/regression-test/controls/pty_parsing.rb << 'EOF'
+          # Tests specifically targeting PTY output parsing scenarios
+          # These are the scenarios that differ between v1.x and v2.x
+
+          control "pty-1" do
+            impact 1.0
+            title "Simple command execution"
+            desc "Verify basic command execution works"
+
+            describe command("whoami") do
+              its("stdout") { should match(/root/) }
+              its("exit_status") { should eq 0 }
+            end
+          end
+
+          control "pty-2" do
+            impact 1.0
+            title "Multi-line command execution"
+            desc "Verify multi-line commands work (THE BUG SCENARIO)"
+
+            # This is the exact type of command that triggered the v2.x bug
+            describe command("for f in /etc/*.conf; do echo \"Found: $f\"; done") do
+              its("stdout") { should_not match(/^for f in/) }  # Should NOT contain command echo
+              its("stdout") { should_not include("2>&1") }      # Should NOT contain wrapper
+              its("exit_status") { should eq 0 }
+            end
+          end
+
+          control "pty-3" do
+            impact 1.0
+            title "Directory existence check"
+            desc "Verify directory existence detection (InSpec directory resource)"
+
+            describe file("/etc") do
+              it { should exist }
+              it { should be_directory }
+            end
+
+            describe file("/var/log") do
+              it { should exist }
+              it { should be_directory }
+            end
+          end
+
+          control "pty-4" do
+            impact 1.0
+            title "File content reading"
+            desc "Verify file content can be read correctly"
+
+            describe file("/etc/os-release") do
+              it { should exist }
+              its("content") { should match(/Ubuntu/) }
+            end
+          end
+
+          control "pty-5" do
+            impact 1.0
+            title "Exit code handling"
+            desc "Verify exit codes are captured correctly"
+
+            describe command("true") do
+              its("exit_status") { should eq 0 }
+            end
+
+            describe command("false") do
+              its("exit_status") { should eq 1 }
+            end
+          end
+
+          control "pty-6" do
+            impact 1.0
+            title "Command with special characters"
+            desc "Verify commands with special shell characters work"
+
+            describe command("echo 'test $VAR' | cat") do
+              its("stdout") { should match(/test/) }
+              its("exit_status") { should eq 0 }
+            end
+          end
+
+          control "pty-7" do
+            impact 1.0
+            title "Stat command output"
+            desc "Verify stat command output parsing (used by InSpec file resource)"
+
+            describe command("stat /etc") do
+              its("stdout") { should match(/File:.*\/etc/) }
+              its("stdout") { should_not include("2>&1") }
+              its("exit_status") { should eq 0 }
+            end
+          end
+
+          control "pty-8" do
+            impact 1.0
+            title "User resource"
+            desc "Verify user resource works"
+
+            describe user("root") do
+              it { should exist }
+              its("uid") { should eq 0 }
+            end
+          end
+          EOF
+
+      # ============================================
+      # BASELINE: Original train-k8s-container v1.3.1
+      # ============================================
+      - name: "BASELINE: Install original train-k8s-container v1.3.1"
+        run: |
+          echo "Installing original train-k8s-container gem (v1.3.1)..."
+          cinc-auditor plugin install train-k8s-container -v 1.3.1
+          cinc-auditor plugin list
+
+      - name: "BASELINE: Run regression tests"
+        run: |
+          echo "Running regression tests with original gem..."
+          cinc-auditor exec test/profiles/regression-test \
+            -t k8s-container:///test-ubuntu/test-ubuntu \
+            --reporter cli json:baseline-results.json || true
+
+          echo "Baseline test completed."
+
+      - name: "BASELINE: Uninstall original gem"
+        run: |
+          echo "Uninstalling original train-k8s-container gem..."
+          cinc-auditor plugin uninstall train-k8s-container
+          cinc-auditor plugin list
+
+      # ============================================
+      # TEST: MITRE fork (current PR)
+      # ============================================
+      - name: "TEST: Install MITRE fork gem"
+        run: |
+          echo "Installing MITRE fork gem from PR..."
+          cinc-auditor plugin install train-k8s-container-*.gem
+          cinc-auditor plugin list
+
+      - name: "TEST: Run regression tests"
+        run: |
+          echo "Running regression tests with MITRE fork..."
+          cinc-auditor exec test/profiles/regression-test \
+            -t k8s-container:///test-ubuntu/test-ubuntu \
+            --reporter cli json:current-results.json || true
+
+          echo "Current test completed."
+
+      # ============================================
+      # COMPARE: Analyze differences
+      # ============================================
+      - name: Compare results with SAF CLI
+        run: |
+          echo "=========================================="
+          echo "BASELINE SUMMARY (original v1.3.1)"
+          echo "=========================================="
+          saf summary --input baseline-results.json || true
+
+          echo ""
+          echo "=========================================="
+          echo "CURRENT SUMMARY (MITRE fork)"
+          echo "=========================================="
+          saf summary --input current-results.json || true
+
+          echo ""
+          echo "=========================================="
+          echo "COMPARISON"
+          echo "=========================================="
+
+          # Extract pass/fail counts for comparison
+          baseline_passed=$(jq '[.profiles[].controls[].results[] | select(.status == "passed")] | length' baseline-results.json)
+          baseline_failed=$(jq '[.profiles[].controls[].results[] | select(.status == "failed")] | length' baseline-results.json)
+          baseline_skipped=$(jq '[.profiles[].controls[].results[] | select(.status == "skipped")] | length' baseline-results.json)
+
+          current_passed=$(jq '[.profiles[].controls[].results[] | select(.status == "passed")] | length' current-results.json)
+          current_failed=$(jq '[.profiles[].controls[].results[] | select(.status == "failed")] | length' current-results.json)
+          current_skipped=$(jq '[.profiles[].controls[].results[] | select(.status == "skipped")] | length' current-results.json)
+
+          echo "Baseline (v1.3.1): Passed=$baseline_passed, Failed=$baseline_failed, Skipped=$baseline_skipped"
+          echo "Current (MITRE):   Passed=$current_passed, Failed=$current_failed, Skipped=$current_skipped"
+
+          # Check for regressions (more failures in current than baseline)
+          if [ "$current_failed" -gt "$baseline_failed" ]; then
+            echo ""
+            echo "⚠️ WARNING: MITRE fork has MORE failures than baseline!"
+            echo "   Baseline failures: $baseline_failed"
+            echo "   Current failures:  $current_failed"
+            echo ""
+            echo "This may indicate a regression. Please review the detailed results."
+
+            # Show which controls differ
+            echo ""
+            echo "Controls with different results:"
+            jq -r '.profiles[].controls[] | select(.results[].status == "failed") | .id' current-results.json | sort > current-failed.txt
+            jq -r '.profiles[].controls[] | select(.results[].status == "failed") | .id' baseline-results.json | sort > baseline-failed.txt
+            echo "New failures in MITRE fork:"
+            comm -23 current-failed.txt baseline-failed.txt || echo "  (none)"
+
+            exit 1
+          fi
+
+          # Check for improvements (fewer failures)
+          if [ "$current_failed" -lt "$baseline_failed" ]; then
+            echo ""
+            echo "✅ IMPROVEMENT: MITRE fork has FEWER failures than baseline!"
+            echo "   Baseline failures: $baseline_failed"
+            echo "   Current failures:  $current_failed"
+          fi
+
+          # Check if results are equivalent
+          if [ "$current_passed" -eq "$baseline_passed" ] && [ "$current_failed" -eq "$baseline_failed" ]; then
+            echo ""
+            echo "✅ EQUIVALENT: Results match between baseline and MITRE fork"
+          fi
+
+          echo ""
+          echo "Regression comparison completed successfully."
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: regression-results
+          path: |
+            baseline-results.json
+            current-results.json
+          retention-days: 30
+
+      - name: Debug on failure
+        if: failure()
+        run: |
+          echo "=== Pod Status ==="
+          kubectl get pods -A
+
+          echo "=== Test Pod Details ==="
+          kubectl describe pod test-ubuntu
+
+          echo "=== Baseline Results ==="
+          cat baseline-results.json | jq '.profiles[].controls[] | {id: .id, results: .results[].status}' || true
+
+          echo "=== Current Results ==="
+          cat current-results.json | jq '.profiles[].controls[] | {id: .id, results: .results[].status}' || true

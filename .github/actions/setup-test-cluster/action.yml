@@ -1,0 +1,145 @@
+name: 'Setup Test Cluster'
+description: 'Creates a kind cluster with test pods for integration testing'
+
+inputs:
+  k8s-version:
+    description: 'Kubernetes version for kind cluster'
+    required: false
+    default: 'v1.30.0'
+  kind-version:
+    description: 'Kind version'
+    required: false
+    default: 'v0.24.0'
+  cluster-name:
+    description: 'Name for the kind cluster'
+    required: false
+    default: 'test-cluster'
+  create-ubuntu:
+    description: 'Create Ubuntu test pod'
+    required: false
+    default: 'true'
+  create-alpine:
+    description: 'Create Alpine test pod'
+    required: false
+    default: 'false'
+  create-distroless:
+    description: 'Create Distroless test pod'
+    required: false
+    default: 'false'
+  wait-timeout:
+    description: 'Timeout for pod readiness'
+    required: false
+    default: '120s'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Create kind cluster
+      uses: container-tools/kind-action@v2
+      with:
+        version: ${{ inputs.kind-version }}
+        node_image: kindest/node:${{ inputs.k8s-version }}
+        cluster_name: ${{ inputs.cluster-name }}
+        wait: 60s
+
+    - name: Verify cluster
+      shell: bash
+      run: |
+        kubectl cluster-info
+        kubectl get nodes
+        kubectl version
+
+    - name: Create test pods
+      shell: bash
+      run: |
+        # Ubuntu pod
+        if [ "${{ inputs.create-ubuntu }}" = "true" ]; then
+          echo "Creating Ubuntu test pod..."
+          kubectl run test-ubuntu --image=ubuntu:22.04 --restart=Never -- sleep infinity
+        fi
+
+        # Alpine pod
+        if [ "${{ inputs.create-alpine }}" = "true" ]; then
+          echo "Creating Alpine test pod..."
+          kubectl run test-alpine --image=alpine:3.18 --restart=Never -- sleep infinity
+        fi
+
+        # Distroless pod
+        if [ "${{ inputs.create-distroless }}" = "true" ]; then
+          echo "Creating Distroless test pod..."
+          kubectl run test-distroless --image=registry.k8s.io/pause:3.9 --restart=Never
+        fi
+
+        # Wait for pods to be Ready
+        if [ "${{ inputs.create-ubuntu }}" = "true" ]; then
+          kubectl wait --for=condition=Ready pod/test-ubuntu --timeout=${{ inputs.wait-timeout }}
+        fi
+        if [ "${{ inputs.create-alpine }}" = "true" ]; then
+          kubectl wait --for=condition=Ready pod/test-alpine --timeout=${{ inputs.wait-timeout }}
+        fi
+        if [ "${{ inputs.create-distroless }}" = "true" ]; then
+          kubectl wait --for=condition=Ready pod/test-distroless --timeout=${{ inputs.wait-timeout }}
+        fi
+
+        kubectl get pods
+
+    - name: Verify pods are operational
+      shell: bash
+      run: |
+        # Function to verify a pod with shell is truly ready
+        verify_pod_ready() {
+          local pod=$1
+          local max_attempts=30
+          local attempt=1
+
+          echo "Verifying $pod is fully operational..."
+          while [ $attempt -le $max_attempts ]; do
+            if kubectl exec "$pod" -- echo "ready" 2>/dev/null | grep -q "ready"; then
+              echo "✅ $pod is ready (attempt $attempt)"
+              return 0
+            fi
+            echo "  Waiting for $pod... (attempt $attempt/$max_attempts)"
+            sleep 2
+            attempt=$((attempt + 1))
+          done
+          echo "❌ $pod failed to become ready"
+          return 1
+        }
+
+        # Function to verify distroless pod is running
+        verify_distroless_ready() {
+          local pod=$1
+          local max_attempts=30
+          local attempt=1
+
+          echo "Verifying distroless $pod is running..."
+          while [ $attempt -le $max_attempts ]; do
+            status=$(kubectl get pod "$pod" -o jsonpath='{.status.phase}' 2>/dev/null)
+            if [ "$status" = "Running" ]; then
+              echo "✅ $pod is running (distroless - no shell) (attempt $attempt)"
+              return 0
+            fi
+            echo "  Waiting for $pod... status=$status (attempt $attempt/$max_attempts)"
+            sleep 2
+            attempt=$((attempt + 1))
+          done
+          echo "❌ $pod failed to start"
+          return 1
+        }
+
+        # Verify pods based on what was created
+        if [ "${{ inputs.create-ubuntu }}" = "true" ]; then
+          verify_pod_ready test-ubuntu
+          kubectl exec test-ubuntu -- /bin/bash -c "echo 'bash works'"
+        fi
+
+        if [ "${{ inputs.create-alpine }}" = "true" ]; then
+          verify_pod_ready test-alpine
+          kubectl exec test-alpine -- /bin/sh -c "echo 'sh works'"
+        fi
+
+        if [ "${{ inputs.create-distroless }}" = "true" ]; then
+          verify_distroless_ready test-distroless
+        fi
+
+        echo "✅ All requested test pods are operational"

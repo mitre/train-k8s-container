@@ -79,103 +79,17 @@ jobs:
           - v1.31.0
 
     steps:
-      - name: Create kind cluster
-        uses: container-tools/kind-action@v2
-        with:
-          version: v0.24.0
-          node_image: kindest/node:${{ matrix.k8s-version }}
-          cluster_name: test-cluster
-          wait: 60s
-
-      - name: Verify cluster
-        run: |
-          kubectl cluster-info
-          kubectl get nodes
-          kubectl version
-
-      - name: Create test pods
-        run: |
-          # Ubuntu pod (bash) - sleep infinity so pods never complete
-          kubectl run test-ubuntu --image=ubuntu:22.04 --restart=Never -- sleep infinity
-
-          # Alpine pod (ash/sh)
-          kubectl run test-alpine --image=alpine:3.18 --restart=Never -- sleep infinity
-
-          # Distroless pod (no shell) - uses the Kubernetes pause image
-          # This image runs forever without needing sleep (designed for pause containers)
-          # Static distroless images like gcr.io/distroless/static have NO binaries at all
-          # This tests the fallback_platform and execute_without_shell code paths
-          kubectl run test-distroless --image=registry.k8s.io/pause:3.9 --restart=Never
-
-          # Wait for pods to be in Ready condition
-          kubectl wait --for=condition=Ready pod/test-ubuntu --timeout=120s
-          kubectl wait --for=condition=Ready pod/test-alpine --timeout=120s
-          kubectl wait --for=condition=Ready pod/test-distroless --timeout=120s
-
-          # Verify pods are listed
-          kubectl get pods
-
-      - name: Verify pods are fully operational
-        run: |
-          # Function to verify a pod with shell is truly ready for commands
-          verify_pod_ready() {
-            local pod=$1
-            local max_attempts=30
-            local attempt=1
-
-            echo "Verifying $pod is fully operational..."
-            while [ $attempt -le $max_attempts ]; do
-              # Try to execute a simple command in the container
-              if kubectl exec "$pod" -- echo "ready" 2>/dev/null | grep -q "ready"; then
-                echo "✅ $pod is ready (attempt $attempt)"
-                return 0
-              fi
-              echo "  Waiting for $pod... (attempt $attempt/$max_attempts)"
-              sleep 2
-              attempt=$((attempt + 1))
-            done
-            echo "❌ $pod failed to become ready"
-            return 1
-          }
-
-          # Function to verify a distroless pod is running (no shell available)
-          verify_distroless_ready() {
-            local pod=$1
-            local max_attempts=30
-            local attempt=1
-
-            echo "Verifying distroless $pod is running..."
-            while [ $attempt -le $max_attempts ]; do
-              # For distroless, we can only check if the pod is Running
-              status=$(kubectl get pod "$pod" -o jsonpath='{.status.phase}' 2>/dev/null)
-              if [ "$status" = "Running" ]; then
-                echo "✅ $pod is running (distroless - no shell) (attempt $attempt)"
-                return 0
-              fi
-              echo "  Waiting for $pod... status=$status (attempt $attempt/$max_attempts)"
-              sleep 2
-              attempt=$((attempt + 1))
-            done
-            echo "❌ $pod failed to start"
-            return 1
-          }
-
-          # Verify pods with shells can execute commands
-          verify_pod_ready test-ubuntu
-          verify_pod_ready test-alpine
-
-          # Verify distroless pod is running (can't exec into it with shell)
-          verify_distroless_ready test-distroless
-
-          # Additional verification: ensure shell is working on shell-enabled pods
-          echo "Verifying shells are functional..."
-          kubectl exec test-ubuntu -- /bin/bash -c "echo 'bash works'"
-          kubectl exec test-alpine -- /bin/sh -c "echo 'sh works'"
-
-          echo "✅ All test pods are fully operational"
-
-      - name: Checkout code
+      - name: Checkout code (needed for composite action)
         uses: actions/checkout@v4
+
+      - name: Setup test cluster with pods
+        uses: ./.github/actions/setup-test-cluster
+        with:
+          k8s-version: ${{ matrix.k8s-version }}
+          cluster-name: test-cluster
+          create-ubuntu: 'true'
+          create-alpine: 'true'
+          create-distroless: 'true'
 
       - name: Set up Ruby ${{ matrix.ruby-version }}
         uses: ruby/setup-ruby@v1
@@ -201,16 +115,10 @@ jobs:
         with:
           name: train-k8s-container-gem
 
-      - name: Install Cinc Auditor
-        run: |
-          # Install Cinc Auditor (open-source, license-free InSpec distribution)
-          curl -L https://omnitruck.cinc.sh/install.sh | sudo bash -s -- -P cinc-auditor
-
-      - name: Install plugin from gem
-        run: cinc-auditor plugin install train-k8s-container-*.gem
-
-      - name: Verify plugin installation
-        run: cinc-auditor plugin list
+      - name: Setup Cinc Auditor with plugin
+        uses: ./.github/actions/setup-cinc-auditor
+        with:
+          install-plugin: train-k8s-container-*.gem
 
       - name: Test with Cinc Auditor detect
         run: cinc-auditor detect -t k8s-container:///test-ubuntu/test-ubuntu
