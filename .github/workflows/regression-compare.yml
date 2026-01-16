@@ -159,12 +159,18 @@ jobs:
           EOF
 
       # ============================================
-      # BASELINE: Original train-k8s-container v1.3.1
+      # BASELINE: Original train-k8s-container (inspec/train-k8s-container)
       # ============================================
-      - name: "BASELINE: Install original train-k8s-container v1.3.1"
+      - name: "BASELINE: Clone and build original train-k8s-container"
         run: |
-          echo "Installing original train-k8s-container gem (v1.3.1)..."
-          cinc-auditor plugin install train-k8s-container -v 1.3.1
+          echo "Cloning original train-k8s-container from inspec/train-k8s-container..."
+          git clone https://github.com/inspec/train-k8s-container.git /tmp/original-train-k8s-container
+          cd /tmp/original-train-k8s-container
+          echo "Building original gem..."
+          gem build train-k8s-container.gemspec
+          ls -la *.gem
+          echo "Installing original gem..."
+          cinc-auditor plugin install train-k8s-container-*.gem
           cinc-auditor plugin list
 
       - name: "BASELINE: Run regression tests"
@@ -206,7 +212,7 @@ jobs:
       - name: Compare results with SAF CLI
         run: |
           echo "=========================================="
-          echo "BASELINE SUMMARY (original v1.3.1)"
+          echo "BASELINE SUMMARY (inspec/train-k8s-container)"
           echo "=========================================="
           saf summary --input baseline-results.json || true
 
@@ -230,7 +236,7 @@ jobs:
           current_failed=$(jq '[.profiles[].controls[].results[] | select(.status == "failed")] | length' current-results.json)
           current_skipped=$(jq '[.profiles[].controls[].results[] | select(.status == "skipped")] | length' current-results.json)
 
-          echo "Baseline (v1.3.1): Passed=$baseline_passed, Failed=$baseline_failed, Skipped=$baseline_skipped"
+          echo "Baseline (inspec): Passed=$baseline_passed, Failed=$baseline_failed, Skipped=$baseline_skipped"
           echo "Current (MITRE):   Passed=$current_passed, Failed=$current_failed, Skipped=$current_skipped"
 
           # Check for regressions (more failures in current than baseline)
