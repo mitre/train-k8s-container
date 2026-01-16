@@ -156,6 +156,83 @@ jobs:
               its("uid") { should eq 0 }
             end
           end
+
+          control "pty-9" do
+            impact 1.0
+            title "Group resource"
+            desc "Verify group resource works"
+
+            describe group("root") do
+              it { should exist }
+              its("gid") { should eq 0 }
+            end
+          end
+
+          control "pty-10" do
+            impact 1.0
+            title "Package resource"
+            desc "Verify package resource works"
+
+            describe package("coreutils") do
+              it { should be_installed }
+            end
+          end
+
+          control "pty-11" do
+            impact 1.0
+            title "Processes resource"
+            desc "Verify process listing works"
+
+            describe processes("sleep") do
+              it { should exist }
+            end
+          end
+
+          control "pty-12" do
+            impact 1.0
+            title "File content parsing"
+            desc "Verify file content with multiple lines parses correctly"
+
+            describe file("/etc/passwd") do
+              it { should exist }
+              its("content") { should match(/root:/) }
+              its("size") { should > 0 }
+              its("mode") { should cmp '0644' }
+            end
+          end
+
+          control "pty-13" do
+            impact 1.0
+            title "Symlink handling"
+            desc "Verify symlink detection works"
+
+            # /etc/mtab is typically a symlink
+            describe file("/etc/mtab") do
+              it { should exist }
+            end
+          end
+
+          control "pty-14" do
+            impact 1.0
+            title "Command with pipe"
+            desc "Verify piped commands work"
+
+            describe command("cat /etc/passwd | wc -l") do
+              its("stdout") { should match(/\d+/) }
+              its("exit_status") { should eq 0 }
+            end
+          end
+
+          control "pty-15" do
+            impact 1.0
+            title "Command with quotes and variables"
+            desc "Verify complex shell parsing"
+
+            describe command("echo \"HOME=$HOME\" | grep HOME") do
+              its("stdout") { should match(/HOME=/) }
+              its("exit_status") { should eq 0 }
+            end
+          end
           EOF
 
       # ============================================
