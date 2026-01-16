@@ -203,13 +203,17 @@ module TrainPlugins
         lines.join
       end
 
-      # Remove the line containing our unique exit code marker
+      # Remove our unique exit code marker from the output
+      # Note: With --printf format (no trailing newline), the marker may be
+      # appended to the last line of output rather than on its own line.
+      # We must preserve the content before the marker.
       def remove_marker_line(text)
-        lines = text.lines
-        marker_regex = exit_marker_pattern
-        marker_idx = lines.rindex { |line| line =~ marker_regex }
-        lines.delete_at(marker_idx) if marker_idx
-        lines.join
+        # Remove the marker pattern itself, preserving any content before it
+        # This handles both cases:
+        # 1. Marker on its own line: "content\n__EXIT_CODE_xxx__=0\n" -> "content\n"
+        # 2. Marker appended to content: "?\n__EXIT_CODE_xxx__=0\n" -> "?\n"
+        #    or without newline: "?__EXIT_CODE_xxx__=0" -> "?"
+        text.sub(/#{Regexp.escape(exit_marker)}=\d+\n?/, '')
       end
 
       def strip_ansi_sequences(text)

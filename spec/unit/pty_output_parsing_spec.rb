@@ -232,6 +232,33 @@ RSpec.describe 'PTY Output Parsing' do
         # Should capture content after wrapper even without newline
         expect(result).to eq('output_no_newline')
       end
+
+      it 'handles --printf format where marker is appended to last line' do
+        # Train's stat command uses --printf which doesn't add trailing newline
+        # So our marker gets appended: "?\n__EXIT_CODE_xxx__=0" not "?\n__EXIT_CODE_xxx__=0\n"
+        # This is the stat output format: 9 fields, last one is selinux context "?"
+        command = "stat /etc --printf '%s\\n%f\\n%U\\n%u\\n%G\\n%g\\n%X\\n%Y\\n%C'"
+        buffer = <<~OUTPUT.chomp
+          #{command} #{wrapper_suffix}
+          4096
+          41ed
+          root
+          0
+          root
+          0
+          1609459200
+          1609459200
+          ?#{exit_marker}=0
+        OUTPUT
+
+        result = parse_output(buffer, command)
+
+        # Should have exactly 9 lines (fields) for stat parsing
+        lines = result.stdout.split("\n")
+        expect(lines.length).to eq(9), "Expected 9 fields, got #{lines.length}: #{lines.inspect}"
+        expect(lines.last).to eq('?'), "Last field should be '?' (selinux), got: #{lines.last.inspect}"
+        expect(result.exit_status).to eq(0)
+      end
     end
   end
 
