@@ -182,10 +182,14 @@ module TrainPlugins
         marker_index = text.index(wrapper)
         if marker_index
           newline_after_marker = text.index("\n", marker_index)
-          return '' if newline_after_marker.nil?
-
-          # Everything after the marker line is actual output
-          output = text[(newline_after_marker + 1)..]
+          if newline_after_marker
+            # Everything after the marker line is actual output
+            output = text[(newline_after_marker + 1)..]
+          else
+            # Edge case: content after marker but no trailing newline
+            marker_end_index = marker_index + wrapper.length
+            output = text[marker_end_index..] || ''
+          end
         else
           # Strategy 2: Fall back to line-by-line removal (handles simple cases)
           # This is used when the marker isn't present (e.g., some test scenarios)

@@ -219,6 +219,19 @@ RSpec.describe 'PTY Output Parsing' do
         # Should use OUR marker for exit code
         expect(result.exit_status).to eq(0)
       end
+
+      it 'handles output without trailing newline after wrapper via remove_command_echo' do
+        # Edge case: wrapper marker exists but no newline follows
+        # Test remove_command_echo directly to verify the edge case branch
+        text = "echo test #{wrapper_suffix}output_no_newline"
+        command = 'echo test'
+
+        # Call the private method directly
+        result = session.send(:remove_command_echo, text, command)
+
+        # Should capture content after wrapper even without newline
+        expect(result).to eq('output_no_newline')
+      end
     end
   end
 

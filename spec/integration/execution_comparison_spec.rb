@@ -157,8 +157,8 @@ RSpec.describe 'Execution Path Comparison', type: :integration do
 
       pty_result = pty_client.execute(cmd)
 
-      # Output should not contain our internal marker wrapper
-      expect(pty_result.stdout).not_to include('__EXIT_CODE__'),
+      # Output should not contain our internal marker wrapper (UUID-based)
+      expect(pty_result.stdout).not_to match(/__EXIT_CODE_[0-9a-f]+__/),
                                        "PTY output contains marker: #{pty_result.stdout.inspect}"
       expect(pty_result.stdout).not_to include('2>&1'),
                                        "PTY output contains wrapper: #{pty_result.stdout.inspect}"
