@@ -1,7 +1,19 @@
 # frozen_string_literal: true
 
-# Tests specifically targeting PTY output parsing scenarios
+# InSpec Resource Validation for train-k8s-container
+#
+# This profile validates that InSpec resources work correctly when using
+# the train-k8s-container transport. It tests PTY output parsing, file
+# operations, user/group resources, and various other InSpec capabilities.
+#
+# Usage:
+#   cinc-auditor exec test/fixtures/profiles/inspec-resource-validation \
+#     -t k8s-container:///test-ubuntu/test-ubuntu
+
+# =============================================================================
+# Core PTY Output Parsing Tests (pty-1 through pty-15)
 # These are the scenarios that differ between v1.x and v2.x
+# =============================================================================
 
 control 'pty-1' do
   impact 1.0
@@ -123,6 +135,17 @@ control 'pty-10' do
   end
 end
 
+control 'pty-11' do
+  impact 1.0
+  title 'Process resource'
+  desc 'Verify process listing works'
+
+  # The sleep infinity process should be running (keeps container alive)
+  describe processes('sleep') do
+    it { should exist }
+  end
+end
+
 control 'pty-12' do
   impact 1.0
   title 'File content parsing'
@@ -133,6 +156,20 @@ control 'pty-12' do
     its('content') { should match(/root:/) }
     its('size') { should be_positive }
     its('mode') { should cmp '0644' }
+  end
+end
+
+control 'pty-13' do
+  impact 1.0
+  title 'Symlink handling'
+  desc 'Verify symlink detection works'
+
+  # /bin is a symlink to /usr/bin on modern Ubuntu (20.04+)
+  # This replaces the broken /etc/mtab test
+  describe file('/bin') do
+    it { should exist }
+    it { should be_symlink }
+    it { should be_linked_to '/usr/bin' }
   end
 end
 
@@ -158,22 +195,12 @@ control 'pty-15' do
   end
 end
 
-# ============================================================================
-# Additional resource coverage
-# ============================================================================
+# =============================================================================
+# Extended Resource Coverage (pty-16 through pty-35)
+# Additional InSpec resources to ensure comprehensive validation
+# =============================================================================
 
 control 'pty-16' do
-  impact 1.0
-  title 'Process resource'
-  desc 'Verify process listing works'
-
-  # The sleep infinity process should be running (keeps container alive)
-  describe processes('sleep') do
-    it { should exist }
-  end
-end
-
-control 'pty-17' do
   impact 1.0
   title 'Mount resource'
   desc 'Verify mount information can be retrieved'
@@ -183,7 +210,7 @@ control 'pty-17' do
   end
 end
 
-control 'pty-18' do
+control 'pty-17' do
   impact 1.0
   title 'Environment variable resource'
   desc 'Verify environment variables can be read'
@@ -193,7 +220,7 @@ control 'pty-18' do
   end
 end
 
-control 'pty-19' do
+control 'pty-18' do
   impact 1.0
   title 'Kernel parameter resource'
   desc 'Verify kernel parameters can be read'
@@ -203,7 +230,7 @@ control 'pty-19' do
   end
 end
 
-control 'pty-20' do
+control 'pty-19' do
   impact 1.0
   title 'Interface resource'
   desc 'Verify network interface information'
@@ -214,7 +241,7 @@ control 'pty-20' do
   end
 end
 
-control 'pty-21' do
+control 'pty-20' do
   impact 1.0
   title 'File owner and group'
   desc 'Verify file ownership attributes are parsed correctly'
@@ -226,10 +253,10 @@ control 'pty-21' do
   end
 end
 
-control 'pty-22' do
+control 'pty-21' do
   impact 1.0
-  title 'Symlink handling'
-  desc 'Verify symlink detection and following'
+  title 'Directory with symlinks'
+  desc 'Verify directories containing symlinks work'
 
   # /etc/alternatives contains symlinks on Debian-based systems
   describe file('/etc/alternatives') do
@@ -238,7 +265,7 @@ control 'pty-22' do
   end
 end
 
-control 'pty-23' do
+control 'pty-22' do
   impact 1.0
   title 'etc_passwd entries'
   desc 'Verify /etc/passwd parsing via passwd resource'
@@ -254,7 +281,7 @@ control 'pty-23' do
   end
 end
 
-control 'pty-24' do
+control 'pty-23' do
   impact 1.0
   title 'etc_group entries'
   desc 'Verify /etc/group parsing via group resource'
@@ -265,7 +292,7 @@ control 'pty-24' do
   end
 end
 
-control 'pty-25' do
+control 'pty-24' do
   impact 1.0
   title 'Large output handling'
   desc 'Verify commands with large output are handled correctly'
@@ -277,7 +304,7 @@ control 'pty-25' do
   end
 end
 
-control 'pty-26' do
+control 'pty-25' do
   impact 1.0
   title 'Command with stderr'
   desc 'Verify commands that produce stderr are handled'
@@ -289,7 +316,7 @@ control 'pty-26' do
   end
 end
 
-control 'pty-27' do
+control 'pty-26' do
   impact 1.0
   title 'Empty output handling'
   desc 'Verify commands with no output work correctly'
@@ -300,7 +327,7 @@ control 'pty-27' do
   end
 end
 
-control 'pty-28' do
+control 'pty-27' do
   impact 1.0
   title 'Nested directory structure'
   desc 'Verify deep directory traversal works'
@@ -311,7 +338,7 @@ control 'pty-28' do
   end
 end
 
-control 'pty-29' do
+control 'pty-28' do
   impact 1.0
   title 'Login defs parsing'
   desc 'Verify login.defs can be parsed'
@@ -325,7 +352,7 @@ control 'pty-29' do
   end
 end
 
-control 'pty-30' do
+control 'pty-29' do
   impact 1.0
   title 'OS detection'
   desc 'Verify platform detection works correctly'
@@ -343,7 +370,7 @@ control 'pty-30' do
   end
 end
 
-control 'pty-31' do
+control 'pty-30' do
   impact 1.0
   title 'Command with embedded newlines'
   desc 'Verify commands containing newlines in output work'
@@ -356,7 +383,7 @@ control 'pty-31' do
   end
 end
 
-control 'pty-32' do
+control 'pty-31' do
   impact 1.0
   title 'File with specific permissions'
   desc 'Verify numeric permission modes are parsed'
@@ -368,7 +395,7 @@ control 'pty-32' do
   end
 end
 
-control 'pty-33' do
+control 'pty-32' do
   impact 1.0
   title 'Command timeout handling'
   desc 'Verify quick commands complete without timeout'
@@ -379,7 +406,7 @@ control 'pty-33' do
   end
 end
 
-control 'pty-34' do
+control 'pty-33' do
   impact 1.0
   title 'JSON output parsing'
   desc 'Verify JSON output from commands is preserved'
@@ -389,7 +416,7 @@ control 'pty-34' do
   end
 end
 
-control 'pty-35' do
+control 'pty-34' do
   impact 1.0
   title 'Bash array and subshell'
   desc 'Verify complex bash constructs work'
