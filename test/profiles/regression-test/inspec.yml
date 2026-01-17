@@ -1,0 +1,5 @@
+name: regression-test
+title: Regression Test Profile for train-k8s-container
+version: 1.0.0
+supports:
+  - platform-family: linux
