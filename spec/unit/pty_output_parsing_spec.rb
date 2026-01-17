@@ -259,6 +259,62 @@ RSpec.describe 'PTY Output Parsing' do
         expect(lines.last).to eq('?'), "Last field should be '?' (selinux), got: #{lines.last.inspect}"
         expect(result.exit_status).to eq(0)
       end
+
+      it 'handles shell expanding $? in echo-back (THE CI BUG SCENARIO)' do
+        # Some shells expand $? BEFORE echoing the command back
+        # So instead of: "command 2>&1 ; echo __EXIT_CODE_xxx__=$?"
+        # We see:        "command 2>&1 ; echo __EXIT_CODE_xxx__=0"
+        # Our pattern matching must handle this!
+        #
+        # Note: Use \\\\n for literal backslash-n in the printf format
+        # (as it appears in real PTY echo-back)
+        command = "stat /etc --printf '%s\\\\n%f\\\\n%U\\\\n%u\\\\n%G\\\\n%g\\\\n%X\\\\n%Y\\\\n%C'"
+
+        # Simulate shell expanding $? to 0 in the echo-back
+        # Note: echo-back shows "=0" not "=$?"
+        expanded_wrapper = "2>&1 ; echo #{exit_marker}=0"
+        buffer = <<~OUTPUT.chomp
+          #{command} #{expanded_wrapper}
+          4096
+          41ed
+          root
+          0
+          root
+          0
+          1609459200
+          1609459200
+          ?#{exit_marker}=0
+        OUTPUT
+
+        result = parse_output(buffer, command)
+
+        # Should still have exactly 9 lines (fields) for stat parsing
+        lines = result.stdout.split("\n")
+        expect(lines.length).to eq(9), "Expected 9 fields, got #{lines.length}: #{lines.inspect}"
+        expect(lines[0]).to eq('4096'), "First field (size) should be '4096', got: #{lines[0].inspect}"
+        expect(lines[1]).to eq('41ed'), "Second field (mode hex) should be '41ed', got: #{lines[1].inspect}"
+        expect(lines.last).to eq('?'), "Last field should be '?' (selinux), got: #{lines.last.inspect}"
+        expect(result.exit_status).to eq(0)
+      end
+
+      it 'handles shell expanding $? to non-zero in echo-back' do
+        # Edge case: previous command had non-zero exit, shell shows that in echo-back
+        # But actual command succeeds with exit 0
+        command = 'whoami'
+
+        # Shell echoes with previous exit code (e.g., 127)
+        expanded_wrapper = "2>&1 ; echo #{exit_marker}=127"
+        buffer = <<~OUTPUT
+          #{command} #{expanded_wrapper}
+          root
+          #{exit_marker}=0
+        OUTPUT
+
+        result = parse_output(buffer, command)
+
+        expect(result.stdout).to eq('root')
+        expect(result.exit_status).to eq(0)  # Actual exit code, not the echoed one
+      end
     end
   end
 

@@ -145,20 +145,29 @@ module TrainPlugins
         # Strip ANSI sequences
         cleaned = strip_ansi_sequences(buffer)
 
-        # Extract exit code using our unique session marker
-        exit_code = 1
-        if (match = cleaned.match(exit_marker_pattern))
-          exit_code = match[1].to_i
-        end
+        # IMPORTANT: Order matters here!
+        # When shell expands $? in echo-back, the marker appears TWICE:
+        #   1. In echoed command: "cmd 2>&1 ; echo __EXIT_CODE_xxx__=0"
+        #   2. In actual output: "...\n__EXIT_CODE_xxx__=0"
+        # We must remove the command echo FIRST (step 1), leaving only the
+        # actual output with its marker (step 2), then extract exit code and
+        # remove the marker.
 
-        # Remove the exit code marker line
-        cleaned = remove_marker_line(cleaned)
-
-        # Remove command echo-back from PTY output
+        # Step 1: Remove command echo-back from PTY output
         # The shell echoes the command before executing, ending with our wrapper marker.
         # For multi-line commands, we can't use simple line matching - we need to find
         # the wrapper marker and remove everything up to and including it.
         output = remove_command_echo(cleaned, command)
+
+        # Step 2: Extract exit code using our unique session marker
+        # Now there's only one marker in the text (the actual output)
+        exit_code = 1
+        if (match = output.match(exit_marker_pattern))
+          exit_code = match[1].to_i
+        end
+
+        # Step 3: Remove the exit code marker from output
+        output = remove_marker_line(output)
 
         # Separate stdout/stderr based on exit code
         if exit_code.zero?
@@ -173,22 +182,32 @@ module TrainPlugins
       #   "#{command} 2>&1 ; echo #{exit_marker}=$?"
       # The shell echoes this, then outputs the result. We need to find
       # where the echo ends and the actual output begins.
+      #
+      # IMPORTANT: Some shells expand $? BEFORE echoing, so the echo-back may show:
+      #   "command 2>&1 ; echo __EXIT_CODE_xxx__=0" (expanded)
+      # instead of:
+      #   "command 2>&1 ; echo __EXIT_CODE_xxx__=$?" (literal)
+      # We use a prefix pattern that matches both cases.
       def remove_command_echo(text, command)
-        # The wrapper marker that ends our command echo (unique per session)
-        wrapper = wrapper_suffix
+        # Match the wrapper prefix (without $? or the exit code value)
+        # This handles both unexpanded ($?) and expanded (0, 127, etc.) cases
+        wrapper_prefix = "2>&1 ; echo #{exit_marker}="
 
         # Strategy 1: Find the wrapper marker (handles multi-line commands)
         # Everything before and including this line is command echo
-        marker_index = text.index(wrapper)
+        marker_index = text.index(wrapper_prefix)
         if marker_index
           newline_after_marker = text.index("\n", marker_index)
           if newline_after_marker
             # Everything after the marker line is actual output
             output = text[(newline_after_marker + 1)..]
           else
-            # Edge case: content after marker but no trailing newline
-            marker_end_index = marker_index + wrapper.length
-            output = text[marker_end_index..] || ''
+            # Edge case: no newline after the wrapper line
+            # Skip to end of line (past the =N or =$? part)
+            line_end = marker_index + wrapper_prefix.length
+            # Skip any remaining characters until end of string (the exit code value)
+            line_end += 1 while line_end < text.length && text[line_end] =~ /[\d$?]/
+            output = text[line_end..] || ''
           end
         else
           # Strategy 2: Fall back to line-by-line removal (handles simple cases)
