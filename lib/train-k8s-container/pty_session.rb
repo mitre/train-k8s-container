@@ -2,6 +2,7 @@
 
 require 'pty'
 require 'timeout'
+require 'securerandom'
 require_relative 'errors'
 require_relative 'ansi_sanitizer'
 
@@ -14,7 +15,7 @@ module TrainPlugins
       class SessionClosedError < PtyError; end
       class CommandTimeoutError < PtyError; end
 
-      attr_reader :session_key, :reader, :writer, :pid
+      attr_reader :session_key, :reader, :writer, :pid, :marker_id
 
       DEFAULT_COMMAND_TIMEOUT = 60
       DEFAULT_SESSION_TIMEOUT = 300
@@ -30,6 +31,9 @@ module TrainPlugins
         @reader = nil
         @writer = nil
         @pid = nil
+        # Unique marker per session prevents collision with user output
+        # Uses 8-char hex (32 bits of entropy) - sufficient for session uniqueness
+        @marker_id = SecureRandom.hex(4)
       end
 
       def connect
@@ -70,8 +74,10 @@ module TrainPlugins
 
         @logger&.debug("Executing in PTY session: #{command}")
 
-        # Send command with exit code marker
-        cmd_with_marker = "#{command} 2>&1 ; echo __EXIT_CODE__=$?"
+        # Send command with unique exit code marker (prevents collision with user output)
+        # Note: Don't use 2>&1 - PTY already merges streams, and explicit redirect
+        # causes stderr content (like SELinux errors) to corrupt structured output
+        cmd_with_marker = "#{command}; echo #{exit_marker}=$?"
         @writer.puts(cmd_with_marker)
         @writer.flush
 
@@ -106,13 +112,31 @@ module TrainPlugins
 
       private
 
+      # Unique exit code marker for this session
+      # Format: __EXIT_CODE_<8-char-hex>__ (e.g., __EXIT_CODE_a1b2c3d4__)
+      # This prevents any possible collision with user output
+      def exit_marker
+        "__EXIT_CODE_#{@marker_id}__"
+      end
+
+      # Regex pattern to match our unique marker
+      def exit_marker_pattern
+        /#{Regexp.escape(exit_marker)}=(\d+)/
+      end
+
+      # Wrapper suffix added to commands (for echo removal)
+      def wrapper_suffix
+        "; echo #{exit_marker}=$?"
+      end
+
       def read_until_marker
         buffer = +'' # Unfreeze string
+        marker_regex = exit_marker_pattern
 
         Timeout.timeout(@command_timeout) do
           while (line = @reader.gets)
             buffer << line
-            break if line =~ /__EXIT_CODE__=(\d+)/
+            break if line =~ marker_regex
           end
         end
 
@@ -123,29 +147,91 @@ module TrainPlugins
         # Strip ANSI sequences
         cleaned = strip_ansi_sequences(buffer)
 
-        # Extract exit code
+        # IMPORTANT: Order matters here!
+        # When shell expands $? in echo-back, the marker appears TWICE:
+        #   1. In echoed command: "cmd 2>&1 ; echo __EXIT_CODE_xxx__=0"
+        #   2. In actual output: "...\n__EXIT_CODE_xxx__=0"
+        # We must remove the command echo FIRST (step 1), leaving only the
+        # actual output with its marker (step 2), then extract exit code and
+        # remove the marker.
+
+        # Step 1: Remove command echo-back from PTY output
+        # The shell echoes the command before executing, ending with our wrapper marker.
+        # For multi-line commands, we can't use simple line matching - we need to find
+        # the wrapper marker and remove everything up to and including it.
+        output = remove_command_echo(cleaned, command)
+
+        # Step 2: Extract exit code using our unique session marker
+        # Now there's only one marker in the text (the actual output)
         exit_code = 1
-        if (match = cleaned.match(/__EXIT_CODE__=(\d+)/))
+        if (match = output.match(exit_marker_pattern))
           exit_code = match[1].to_i
         end
 
-        # Remove exit code line
-        cleaned = cleaned.gsub(/__EXIT_CODE__=\d+.*$/, '')
+        # Step 3: Remove the exit code marker from output
+        output = remove_marker_line(output)
 
-        # Split into lines and remove command echo
-        lines = cleaned.lines
-        # Remove command wrapper echo (exact match)
-        cmd_wrapper = "#{command} 2>&1 ; echo __EXIT_CODE__=$?"
-        lines.reject! { |l| l.strip == cmd_wrapper.strip || l.strip == command.strip }
+        # PTY merges stdout/stderr - we cannot separate them
+        # Always return output as stdout, let caller use exit_code for success/failure
+        Train::Extras::CommandResult.new(output.strip, '', exit_code)
+      end
 
-        output = lines.join
+      # Remove echoed command from PTY output
+      # PTY shells echo the command before output. Our wrapper adds:
+      #   "#{command} 2>&1 ; echo #{exit_marker}=$?"
+      # The shell echoes this, then outputs the result. We need to find
+      # where the echo ends and the actual output begins.
+      #
+      # IMPORTANT: Some shells expand $? BEFORE echoing, so the echo-back may show:
+      #   "command; echo __EXIT_CODE_xxx__=0" (expanded)
+      # instead of:
+      #   "command; echo __EXIT_CODE_xxx__=$?" (literal)
+      # We use a prefix pattern that matches both cases.
+      def remove_command_echo(text, command)
+        # Match the wrapper prefix (without $? or the exit code value)
+        # This handles both unexpanded ($?) and expanded (0, 127, etc.) cases
+        wrapper_prefix = "; echo #{exit_marker}="
 
-        # Separate stdout/stderr based on exit code
-        if exit_code.zero?
-          Train::Extras::CommandResult.new(output.strip, '', exit_code)
+        # Strategy 1: Find the wrapper marker (handles multi-line commands)
+        # Everything before and including this line is command echo
+        marker_index = text.index(wrapper_prefix)
+        if marker_index
+          newline_after_marker = text.index("\n", marker_index)
+          if newline_after_marker
+            # Everything after the marker line is actual output
+            output = text[(newline_after_marker + 1)..]
+          else
+            # Edge case: no newline after the wrapper line
+            # Skip to end of line (past the =N or =$? part)
+            line_end = marker_index + wrapper_prefix.length
+            # Skip any remaining characters until end of string (the exit code value)
+            line_end += 1 while line_end < text.length && text[line_end] =~ /[\d$?]/
+            output = text[line_end..] || ''
+          end
         else
-          Train::Extras::CommandResult.new('', output.strip, exit_code)
+          # Strategy 2: Fall back to line-by-line removal (handles simple cases)
+          # This is used when the marker isn't present (e.g., some test scenarios)
+          output = text
         end
+
+        # Also remove simple command echo if still present
+        # (some shells may echo the command on its own line)
+        lines = output.lines
+        lines.reject! { |l| l.strip == command.strip }
+        lines.join
+      end
+
+      # Remove our unique exit code marker from the output
+      # Note: With --printf format (no trailing newline), the marker may be
+      # appended to the last line of output rather than on its own line.
+      # We must preserve the content before the marker.
+      def remove_marker_line(text)
+        # Remove the marker pattern itself, preserving any content before it
+        # This handles both cases:
+        # 1. Marker on its own line: "content\n__EXIT_CODE_xxx__=0\n" -> "content\n"
+        # 2. Marker appended to content: "?\n__EXIT_CODE_xxx__=0\n" -> "?\n"
+        #    or without newline: "?__EXIT_CODE_xxx__=0" -> "?"
+        text.sub(/#{Regexp.escape(exit_marker)}=\d+\n?/, '')
       end
 
       def strip_ansi_sequences(text)

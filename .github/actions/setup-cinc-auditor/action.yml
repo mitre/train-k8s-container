@@ -1,0 +1,54 @@
+name: 'Setup Cinc Auditor'
+description: 'Installs Cinc Auditor and optionally SAF CLI and train-k8s-container plugin'
+
+inputs:
+  install-saf-cli:
+    description: 'Install SAF CLI for result comparison'
+    required: false
+    default: 'false'
+  install-plugin:
+    description: 'Install train-k8s-container plugin (path to gem file)'
+    required: false
+    default: ''
+  plugin-version:
+    description: 'Install specific version from RubyGems (e.g., "1.3.1")'
+    required: false
+    default: ''
+  plugin-name:
+    description: 'Plugin gem name (train-k8s-container or train-k8s-container-mitre)'
+    required: false
+    default: 'train-k8s-container'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Install Cinc Auditor
+      shell: bash
+      run: |
+        echo "Installing Cinc Auditor (open-source, license-free InSpec distribution)..."
+        curl -L https://omnitruck.cinc.sh/install.sh | sudo bash -s -- -P cinc-auditor
+        cinc-auditor version
+
+    - name: Install SAF CLI
+      if: inputs.install-saf-cli == 'true'
+      shell: bash
+      run: |
+        echo "Installing SAF CLI..."
+        npm install -g @mitre/saf
+        saf --version
+
+    - name: Install plugin from RubyGems
+      if: inputs.plugin-version != ''
+      shell: bash
+      run: |
+        echo "Installing ${{ inputs.plugin-name }} v${{ inputs.plugin-version }} from RubyGems..."
+        cinc-auditor plugin install ${{ inputs.plugin-name }} -v ${{ inputs.plugin-version }}
+        cinc-auditor plugin list
+
+    - name: Install plugin from gem file
+      if: inputs.install-plugin != ''
+      shell: bash
+      run: |
+        echo "Installing plugin from ${{ inputs.install-plugin }}..."
+        cinc-auditor plugin install ${{ inputs.install-plugin }}
+        cinc-auditor plugin list

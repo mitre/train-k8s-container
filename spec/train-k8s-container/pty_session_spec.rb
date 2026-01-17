@@ -188,8 +188,12 @@ RSpec.describe TrainPlugins::K8sContainer::PtySession do
   end
 
   describe '#parse_output (private method)' do
+    # Helper to get the session's unique exit marker
+    let(:exit_marker) { session.send(:exit_marker) }
+    let(:wrapper_suffix) { session.send(:wrapper_suffix) }
+
     it 'parses successful command output' do
-      buffer = "whoami\nroot\n__EXIT_CODE__=0\n"
+      buffer = "whoami\nroot\n#{exit_marker}=0\n"
       result = session.send(:parse_output, buffer, 'whoami')
 
       expect(result.stdout).to eq('root')
@@ -197,18 +201,19 @@ RSpec.describe TrainPlugins::K8sContainer::PtySession do
       expect(result.exit_status).to eq(0)
     end
 
-    it 'parses failed command output' do
-      buffer = "invalid-command\nbash: invalid-command: command not found\n__EXIT_CODE__=127\n"
+    it 'parses failed command output (PTY merges streams - output in stdout)' do
+      buffer = "invalid-command\nbash: invalid-command: command not found\n#{exit_marker}=127\n"
       result = session.send(:parse_output, buffer, 'invalid-command')
 
-      expect(result.stdout).to eq('')
-      expect(result.stderr).to include('command not found')
+      # PTY merges stdout/stderr - all output goes to stdout
+      expect(result.stdout).to include('command not found')
+      expect(result.stderr).to eq('')
       expect(result.exit_status).to eq(127)
     end
 
     it 'removes command echo from output' do
       command = 'echo test'
-      buffer = "#{command}\ntest\n__EXIT_CODE__=0\n"
+      buffer = "#{command}\ntest\n#{exit_marker}=0\n"
       result = session.send(:parse_output, buffer, command)
 
       expect(result.stdout).to eq('test')
@@ -217,25 +222,25 @@ RSpec.describe TrainPlugins::K8sContainer::PtySession do
 
     it 'removes command wrapper from output' do
       command = 'whoami'
-      wrapper = "#{command} 2>&1 ; echo __EXIT_CODE__=$?"
-      buffer = "#{wrapper}\nroot\n__EXIT_CODE__=0\n"
+      buffer = "#{command} #{wrapper_suffix}\nroot\n#{exit_marker}=0\n"
       result = session.send(:parse_output, buffer, command)
 
       expect(result.stdout).to eq('root')
       expect(result.stdout).not_to include('2>&1')
-      expect(result.stdout).not_to include('__EXIT_CODE__')
+      expect(result.stdout).not_to include(exit_marker)
     end
 
-    it 'handles output with ANSI sequences' do
-      buffer = "\e[31mError:\e[0m Something failed\n__EXIT_CODE__=1\n"
+    it 'handles output with ANSI sequences (PTY merges streams)' do
+      buffer = "\e[31mError:\e[0m Something failed\n#{exit_marker}=1\n"
       result = session.send(:parse_output, buffer, 'test-command')
 
-      expect(result.stderr).not_to include("\e[31m")
-      expect(result.stderr).to include('Error: Something failed')
+      # PTY merges stdout/stderr - all output goes to stdout
+      expect(result.stdout).not_to include("\e[31m")
+      expect(result.stdout).to include('Error: Something failed')
     end
 
     it 'handles multi-line output' do
-      buffer = "ls\nfile1.txt\nfile2.txt\nfile3.txt\n__EXIT_CODE__=0\n"
+      buffer = "ls\nfile1.txt\nfile2.txt\nfile3.txt\n#{exit_marker}=0\n"
       result = session.send(:parse_output, buffer, 'ls')
 
       expect(result.stdout).to include('file1.txt')
@@ -248,6 +253,10 @@ RSpec.describe TrainPlugins::K8sContainer::PtySession do
       result = session.send(:parse_output, buffer, 'test')
 
       expect(result.exit_status).to eq(1)
+    end
+
+    it 'generates unique marker_id on initialization' do
+      expect(session.marker_id).to match(/^[0-9a-f]{8}$/)
     end
   end
 

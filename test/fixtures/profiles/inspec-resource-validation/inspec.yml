@@ -1,0 +1,9 @@
+name: inspec-resource-validation
+title: InSpec Resource Validation for train-k8s-container
+maintainer: MITRE SAF Team
+copyright: MITRE Corporation
+license: Apache-2.0
+summary: Validates that InSpec resources work correctly with the train-k8s-container transport
+version: 1.0.0
+supports:
+  - platform-family: linux
