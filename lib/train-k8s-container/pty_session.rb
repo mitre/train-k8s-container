@@ -75,7 +75,9 @@ module TrainPlugins
         @logger&.debug("Executing in PTY session: #{command}")
 
         # Send command with unique exit code marker (prevents collision with user output)
-        cmd_with_marker = "#{command} 2>&1 ; echo #{exit_marker}=$?"
+        # Note: Don't use 2>&1 - PTY already merges streams, and explicit redirect
+        # causes stderr content (like SELinux errors) to corrupt structured output
+        cmd_with_marker = "#{command}; echo #{exit_marker}=$?"
         @writer.puts(cmd_with_marker)
         @writer.flush
 
@@ -124,7 +126,7 @@ module TrainPlugins
 
       # Wrapper suffix added to commands (for echo removal)
       def wrapper_suffix
-        "2>&1 ; echo #{exit_marker}=$?"
+        "; echo #{exit_marker}=$?"
       end
 
       def read_until_marker
@@ -169,12 +171,9 @@ module TrainPlugins
         # Step 3: Remove the exit code marker from output
         output = remove_marker_line(output)
 
-        # Separate stdout/stderr based on exit code
-        if exit_code.zero?
-          Train::Extras::CommandResult.new(output.strip, '', exit_code)
-        else
-          Train::Extras::CommandResult.new('', output.strip, exit_code)
-        end
+        # PTY merges stdout/stderr - we cannot separate them
+        # Always return output as stdout, let caller use exit_code for success/failure
+        Train::Extras::CommandResult.new(output.strip, '', exit_code)
       end
 
       # Remove echoed command from PTY output
@@ -184,14 +183,14 @@ module TrainPlugins
       # where the echo ends and the actual output begins.
       #
       # IMPORTANT: Some shells expand $? BEFORE echoing, so the echo-back may show:
-      #   "command 2>&1 ; echo __EXIT_CODE_xxx__=0" (expanded)
+      #   "command; echo __EXIT_CODE_xxx__=0" (expanded)
       # instead of:
-      #   "command 2>&1 ; echo __EXIT_CODE_xxx__=$?" (literal)
+      #   "command; echo __EXIT_CODE_xxx__=$?" (literal)
       # We use a prefix pattern that matches both cases.
       def remove_command_echo(text, command)
         # Match the wrapper prefix (without $? or the exit code value)
         # This handles both unexpanded ($?) and expanded (0, 127, etc.) cases
-        wrapper_prefix = "2>&1 ; echo #{exit_marker}="
+        wrapper_prefix = "; echo #{exit_marker}="
 
         # Strategy 1: Find the wrapper marker (handles multi-line commands)
         # Everything before and including this line is command echo

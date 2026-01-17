@@ -201,12 +201,13 @@ RSpec.describe TrainPlugins::K8sContainer::PtySession do
       expect(result.exit_status).to eq(0)
     end
 
-    it 'parses failed command output' do
+    it 'parses failed command output (PTY merges streams - output in stdout)' do
       buffer = "invalid-command\nbash: invalid-command: command not found\n#{exit_marker}=127\n"
       result = session.send(:parse_output, buffer, 'invalid-command')
 
-      expect(result.stdout).to eq('')
-      expect(result.stderr).to include('command not found')
+      # PTY merges stdout/stderr - all output goes to stdout
+      expect(result.stdout).to include('command not found')
+      expect(result.stderr).to eq('')
       expect(result.exit_status).to eq(127)
     end
 
@@ -229,12 +230,13 @@ RSpec.describe TrainPlugins::K8sContainer::PtySession do
       expect(result.stdout).not_to include(exit_marker)
     end
 
-    it 'handles output with ANSI sequences' do
+    it 'handles output with ANSI sequences (PTY merges streams)' do
       buffer = "\e[31mError:\e[0m Something failed\n#{exit_marker}=1\n"
       result = session.send(:parse_output, buffer, 'test-command')
 
-      expect(result.stderr).not_to include("\e[31m")
-      expect(result.stderr).to include('Error: Something failed')
+      # PTY merges stdout/stderr - all output goes to stdout
+      expect(result.stdout).not_to include("\e[31m")
+      expect(result.stdout).to include('Error: Something failed')
     end
 
     it 'handles multi-line output' do

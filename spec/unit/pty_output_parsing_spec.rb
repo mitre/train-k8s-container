@@ -10,7 +10,7 @@ RSpec.describe 'PTY Output Parsing' do
   # Fixed marker ID for testing (in production, this is SecureRandom.hex(4))
   let(:test_marker_id) { 'deadbeef' }
   let(:exit_marker) { "__EXIT_CODE_#{test_marker_id}__" }
-  let(:wrapper_suffix) { "2>&1 ; echo #{exit_marker}=$?" }
+  let(:wrapper_suffix) { "; echo #{exit_marker}=$?" }
 
   let(:session) do
     # Create a minimal session object for testing parse_output
@@ -37,12 +37,14 @@ RSpec.describe 'PTY Output Parsing' do
         expect(result.exit_status).to eq(0)
       end
 
-      it 'extracts stderr for failed commands' do
+      it 'returns output in stdout even for failed commands (PTY merges streams)' do
         buffer = "bash: nonexistent: command not found\n#{exit_marker}=127\n"
         result = parse_output(buffer, 'nonexistent')
 
-        expect(result.stdout).to eq('')
-        expect(result.stderr).to eq('bash: nonexistent: command not found')
+        # PTY merges stdout/stderr - all output goes to stdout
+        # Caller uses exit_status to determine success/failure
+        expect(result.stdout).to eq('bash: nonexistent: command not found')
+        expect(result.stderr).to eq('')
         expect(result.exit_status).to eq(127)
       end
     end
@@ -123,9 +125,9 @@ RSpec.describe 'PTY Output Parsing' do
         expect(result.stdout).not_to include('for f in'),
                                      "Output contains command: #{result.stdout.inspect}"
 
-        # Output SHOULD contain the actual error
-        expect(result.stderr).to include('No such file or directory'),
-                                 "Error not in stderr: #{result.stderr.inspect}"
+        # Output SHOULD contain the actual error (in stdout - PTY merges streams)
+        expect(result.stdout).to include('No such file or directory'),
+                                 "Error not in stdout: #{result.stdout.inspect}"
         expect(result.exit_status).to eq(1)
       end
     end
@@ -159,8 +161,9 @@ RSpec.describe 'PTY Output Parsing' do
 
         result = parse_output(buffer, command)
 
-        expect(result.stderr).to include('No such file or directory'),
-                                 "Expected error in stderr: #{result.inspect}"
+        # PTY merges stdout/stderr - error message is in stdout
+        expect(result.stdout).to include('No such file or directory'),
+                                 "Expected error in stdout: #{result.inspect}"
         expect(result.exit_status).to eq(1)
       end
     end
@@ -313,7 +316,7 @@ RSpec.describe 'PTY Output Parsing' do
         result = parse_output(buffer, command)
 
         expect(result.stdout).to eq('root')
-        expect(result.exit_status).to eq(0)  # Actual exit code, not the echoed one
+        expect(result.exit_status).to eq(0) # Actual exit code, not the echoed one
       end
     end
   end

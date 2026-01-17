@@ -29,10 +29,11 @@ Metrics/PerceivedComplexity:
 Metrics/MethodLength:
   Enabled: false
 
-# RSpec tests will have longer blocks - acceptable
+# RSpec tests and gemspecs will have longer blocks - acceptable
 Metrics/BlockLength:
   Exclude:
     - spec/**/*_spec.rb
+    - '*.gemspec'
 
 # Allow reasonable line length (Chef standard is 150)
 Layout/LineLength:
