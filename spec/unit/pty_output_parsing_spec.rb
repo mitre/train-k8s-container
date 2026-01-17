@@ -294,7 +294,7 @@ RSpec.describe 'PTY Output Parsing' do
         # Should still have exactly 9 lines (fields) for stat parsing
         lines = result.stdout.split("\n")
         expect(lines.length).to eq(9), "Expected 9 fields, got #{lines.length}: #{lines.inspect}"
-        expect(lines[0]).to eq('4096'), "First field (size) should be '4096', got: #{lines[0].inspect}"
+        expect(lines.first).to eq('4096'), "First field (size) should be '4096', got: #{lines.first.inspect}"
         expect(lines[1]).to eq('41ed'), "Second field (mode hex) should be '41ed', got: #{lines[1].inspect}"
         expect(lines.last).to eq('?'), "Last field should be '?' (selinux), got: #{lines.last.inspect}"
         expect(result.exit_status).to eq(0)
