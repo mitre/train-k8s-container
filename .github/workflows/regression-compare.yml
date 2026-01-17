@@ -97,16 +97,19 @@ jobs:
       # ============================================
       - name: Compare results with SAF CLI
         run: |
+          # Suppress node warnings from SAF CLI eMASS module loading issues
+          export NODE_NO_WARNINGS=1
+
           echo "=========================================="
           echo "BASELINE SUMMARY (inspec/train-k8s-container)"
           echo "=========================================="
-          saf summary --input baseline-results.json || true
+          saf summary --input baseline-results.json 2>/dev/null || true
 
           echo ""
           echo "=========================================="
           echo "CURRENT SUMMARY (MITRE fork)"
           echo "=========================================="
-          saf summary --input current-results.json || true
+          saf summary --input current-results.json 2>/dev/null || true
 
           echo ""
           echo "=========================================="
