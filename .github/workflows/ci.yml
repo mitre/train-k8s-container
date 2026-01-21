@@ -238,7 +238,7 @@ jobs:
         run: cinc-auditor exec https://github.com/NickShumar/Test-Inspec-v2 -t k8s-container:///test-ubuntu/test-ubuntu --enhanced-outcomes --reporter cli json:train-k8s-container-scan-results.json || true
 
       - name: Test Common Pass
-        run: kubectl exec -it ubuntu-pod -- bash -c "grep -i nullok /etc/pam.d/common-password /etc/pam.d/common-auth"
+        run: kubectl exec -it test-ubuntu -- bash -c "grep -i nullok /etc/pam.d/common-password /etc/pam.d/common-auth"
 
       - name: Upload scan artifact
         uses: actions/upload-artifact@v4
