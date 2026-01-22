@@ -242,7 +242,7 @@ jobs:
 
       - name: OpenSSL PTY Test
         run: |
-          kubectl exec target-ubuntu -- bash -lc '
+          kubectl exec -it test-ubuntu -- bash -lc '
             for f in $(find -L /etc/ssl/certs -type f); do
               openssl x509 -sha256 -in "$f" -noout -fingerprint | cut -d= -f2| tr -d ":"| egrep -vw '#{allowed_ca_fingerprints_regex}'
             done
