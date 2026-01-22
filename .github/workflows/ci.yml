@@ -240,6 +240,14 @@ jobs:
       - name: Test Common Pass
         run: kubectl exec -it test-ubuntu -- bash -c "grep -i nullok /etc/pam.d/common-password /etc/pam.d/common-auth"
 
+      - name: OpenSSL PTY Test
+        run: |
+          kubectl exec target-ubuntu -- bash -lc '
+            for f in $(find -L /etc/ssl/certs -type f); do
+              openssl x509 -sha256 -in "$f" -noout -fingerprint | cut -d= -f2| tr -d ":"| egrep -vw '#{allowed_ca_fingerprints_regex}'
+            done
+          '
+
       - name: Upload scan artifact
         uses: actions/upload-artifact@v4
         with:
@@ -563,13 +571,6 @@ jobs:
           echo "STIG scan completed. Results summary:"
           kubectl exec cinc-scanner -- cat /work/stig-results.json | head -100 || true
       
-      - name: OpenSSL PTY Test
-        run: |
-          kubectl exec target-ubuntu -- bash -lc '
-            for f in $(find -L /etc/ssl/certs -type f); do
-              openssl x509 -sha256 -in "$f" -noout -fingerprint | cut -d= -f2| tr -d ":"| egrep -vw '#{allowed_ca_fingerprints_regex}'
-            done
-          '
       - name: Test same-pod container-to-container scanning
         run: |
           # This tests scanning a sibling container within the same pod
