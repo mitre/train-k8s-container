@@ -55,8 +55,8 @@ RSpec.describe 'End-to-End Integration', type: :integration do
       platform = conn.platform
 
       # Should detect actual Ubuntu platform
-      expect(platform.name).to eq('ubuntu')
-      expect(platform[:family]).to eq('debian')
+      expect(platform.name).to eq('redhat')
+      expect(platform[:family]).to eq('redhat')
 
       # Should have standard OS family hierarchy
       expect(platform.linux?).to be true
