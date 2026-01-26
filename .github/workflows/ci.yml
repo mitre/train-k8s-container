@@ -249,7 +249,7 @@ jobs:
       - name: Upload scan artifact
         uses: actions/upload-artifact@v4
         with:
-          name: train-k8s-container-scan-v1_3_1
+          name: train-k8s-container-scan-redhat
           path: train-k8s-container-scan-results.json
           retention-days: 5            
 
