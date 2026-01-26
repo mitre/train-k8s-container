@@ -93,7 +93,7 @@ jobs:
       - name: Create test pods
         run: |
           # Ubuntu pod (bash) - sleep infinity so pods never complete
-          kubectl run test-ubuntu --image=ubuntu:22.04 --restart=Never -- sleep infinity
+          kubectl run test-ubuntu --image=redhat/ubi9:latest --restart=Never -- sleep infinity
 
           # Alpine pod (ash/sh)
           kubectl run test-alpine --image=alpine:3.18 --restart=Never -- sleep infinity
@@ -235,7 +235,7 @@ jobs:
           kubectl exec test-ubuntu -c test-ubuntu -- ls -lah /.dockerenv
 
       - name: Test with Scan
-        run: cinc-auditor exec https://github.com/mitre/canonical-ubuntu-22.04-lts-stig-baseline -t k8s-container:///test-ubuntu/test-ubuntu --enhanced-outcomes --reporter cli json:train-k8s-container-scan-results.json || true
+        run: cinc-auditor exec https://github.com/mitre/redhat-enterprise-linux-9-stig-baseline -t k8s-container:///test-ubuntu/test-ubuntu --enhanced-outcomes --reporter cli json:train-k8s-container-scan-results.json || true
 
       - name: Test Common Pass
         run: kubectl exec -it test-ubuntu -- bash -c "grep -i nullok /etc/pam.d/common-password /etc/pam.d/common-auth"
