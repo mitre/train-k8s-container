@@ -37,6 +37,34 @@ RSpec.describe TrainPlugins::K8sContainer::Connection do
     end
   end
 
+  context 'when namespace is provided as URI host' do
+    let(:options) { { host: 'prod', path: '/shell-demo/nginx' } }
+
+    before do
+      allow(TrainPlugins::K8sContainer::KubectlExecClient).to receive(:new)
+        .with(pod: 'shell-demo', namespace: 'prod', container_name: 'nginx')
+        .and_return(kube_client)
+    end
+
+    it 'uses the host as the namespace' do
+      expect(subject.uri).to eq('k8s-container://prod/shell-demo/nginx')
+    end
+  end
+
+  context 'when target URI is not pre-expanded' do
+    let(:options) { { target: 'k8s-container://prod/shell-demo/nginx' } }
+
+    before do
+      allow(TrainPlugins::K8sContainer::KubectlExecClient).to receive(:new)
+        .with(pod: 'shell-demo', namespace: 'prod', container_name: 'nginx')
+        .and_return(kube_client)
+    end
+
+    it 'parses the target URI before connecting' do
+      expect(subject.uri).to eq('k8s-container://prod/shell-demo/nginx')
+    end
+  end
+
   describe '#file' do
     context 'path validation' do
       it 'rejects nil path' do
