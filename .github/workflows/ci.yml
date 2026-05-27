@@ -440,10 +440,6 @@ jobs:
           echo "STIG scan completed. Results summary:"
           kubectl exec cinc-scanner -- cat /work/stig-results.json | head -100 || true
 
-      - name: run cinc-auditor detect
-        run: |
-          cinc-auditor detect -t k8s-ontainer:///target-ubuntu/target-ubuntu
-
       - name: Test same-pod container-to-container scanning
         run: |
           # This tests scanning a sibling container within the same pod
