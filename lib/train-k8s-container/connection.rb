@@ -19,7 +19,14 @@ module TrainPlugins
       # @example k8s-container://default/shell-demo/nginx
 
       def initialize(options)
-        options = Train.unpack_target_from_uri(options[:target]).merge(options) if options[:target]
+        # Defensive: unpack URI when a caller passes :target directly (e.g. programmatic use).
+        # InSpec normally pre-unpacks via Train.target_config, so :host/:path are already set
+        # and this block is a no-op. Uses unpack_target_from_uri because Train.target_config is
+        # flagged for deprecation upstream (see train-core/lib/train.rb). Merge direction
+        # matches target_config's original behavior: explicit options win over unpacked creds.
+        if options[:target] && options[:host].to_s.empty?
+          options = Train.unpack_target_from_uri(options[:target]).merge(options)
+        end
         super
 
         # Parse URI components:
