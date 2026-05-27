@@ -107,6 +107,13 @@ RSpec.describe TrainPlugins::K8sContainer::Connection do
     end
   end
 
+  describe '#unique_identifier' do
+    it 'delegates to the kubectl client' do
+      allow(kube_client).to receive(:unique_identifier).and_return('ns/pod/container')
+      expect(subject.unique_identifier).to eq('ns/pod/container')
+    end
+  end
+
   describe '#file' do
     context 'path validation' do
       it 'rejects nil path' do
