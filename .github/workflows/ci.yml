@@ -440,6 +440,36 @@ jobs:
           echo "STIG scan completed. Results summary:"
           kubectl exec cinc-scanner -- cat /work/stig-results.json | head -100 || true
 
+      - name: Test URI Parsing
+        run: |
+            context 'when namespace is provided as URI host' do
+              let(:options) { { host: '', path: '/target-ubuntu/target-ubuntu' } }
+
+              before do
+                allow(TrainPlugins::K8sContainer::KubectlExecClient).to receive(:new)
+                  .with(pod: 'target-ubuntu', namespace: '', container_name: 'target-ubuntu')
+                  .and_return(kube_client)
+              end
+
+              it 'uses the host as the namespace' do
+                expect(subject.uri).to eq('k8s-container:///target-ubuntu/target-ubuntu')
+              end
+            end
+
+            context 'when target URI is not pre-expanded' do
+              let(:options) { { target: 'k8s-container:///target-ubuntu/target-ubuntu' } }
+
+              before do
+                allow(TrainPlugins::K8sContainer::KubectlExecClient).to receive(:new)
+                  .with(pod: 'target-ubuntu', namespace: '', container_name: 'target-ubuntu')
+                  .and_return(kube_client)
+              end
+
+              it 'parses the target URI before connecting' do
+                expect(subject.uri).to eq('k8s-container:///target-ubuntu/target-ubuntu')
+              end
+            end
+
       - name: Test same-pod container-to-container scanning
         run: |
           # This tests scanning a sibling container within the same pod

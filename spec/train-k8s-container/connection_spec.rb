@@ -29,7 +29,7 @@ RSpec.describe TrainPlugins::K8sContainer::Connection do
       end
     end
 
-    context 'when container_name paramete is missing' do
+    context 'when container_name parameter is missing' do
       let(:options) { { pod: 'shell-demo' } }
       it 'should raise error for missing Container Name' do
         expect { subject }.to raise_error(ArgumentError).with_message('Missing Parameter `container_name`')
