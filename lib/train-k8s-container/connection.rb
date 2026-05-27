@@ -29,15 +29,12 @@ module TrainPlugins
         path_parts = options[:path]&.split('/')&.reject(&:empty?)
         host = options[:host].to_s.empty? ? nil : options[:host]
 
-        if host && path_parts&.length == 2
-          @namespace = options[:namespace] || host
-          @pod = options[:pod] || path_parts.first
-          @container_name = options[:container_name] || path_parts[1]
-        elsif path_parts&.length == 3
+        case path_parts&.length
+        when 3
           @namespace = options[:namespace] || host || path_parts.first
           @pod = options[:pod] || path_parts[1]
           @container_name = options[:container_name] || path_parts[2]
-        elsif path_parts&.length == 2
+        when 2
           @namespace = options[:namespace] || host || TrainPlugins::K8sContainer::KubectlExecClient::DEFAULT_NAMESPACE
           @pod = options[:pod] || path_parts.first
           @container_name = options[:container_name] || path_parts[1]
