@@ -19,7 +19,7 @@ module TrainPlugins
       # @example k8s-container://default/shell-demo/nginx
 
       def initialize(options)
-        options = Train.unpack_target_from_uri(options) if options[:target]
+        options = Train.unpack_target_from_uri(options[:target]).merge(options) if options[:target]
         super
 
         # Parse URI components:
