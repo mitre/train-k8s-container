@@ -65,6 +65,48 @@ RSpec.describe TrainPlugins::K8sContainer::Connection do
     end
   end
 
+  context 'when namespace is provided as both URI host and explicit option' do
+    let(:options) { { host: 'from-uri', namespace: 'from-option', path: '/shell-demo/nginx' } }
+
+    before do
+      allow(TrainPlugins::K8sContainer::KubectlExecClient).to receive(:new)
+        .with(pod: 'shell-demo', namespace: 'from-option', container_name: 'nginx')
+        .and_return(kube_client)
+    end
+
+    it 'uses the explicit namespace option over the URI host' do
+      expect(subject.uri).to eq('k8s-container://from-option/shell-demo/nginx')
+    end
+  end
+
+  context 'when target URI uses triple-slash with two path segments' do
+    let(:options) { { host: '', path: '/shell-demo/nginx' } }
+
+    before do
+      allow(TrainPlugins::K8sContainer::KubectlExecClient).to receive(:new)
+        .with(pod: 'shell-demo', namespace: 'default', container_name: 'nginx')
+        .and_return(kube_client)
+    end
+
+    it 'resolves to the default namespace' do
+      expect(subject.uri).to eq('k8s-container://default/shell-demo/nginx')
+    end
+  end
+
+  context 'when target URI uses triple-slash with three path segments' do
+    let(:options) { { host: '', path: '/prod/shell-demo/nginx' } }
+
+    before do
+      allow(TrainPlugins::K8sContainer::KubectlExecClient).to receive(:new)
+        .with(pod: 'shell-demo', namespace: 'prod', container_name: 'nginx')
+        .and_return(kube_client)
+    end
+
+    it 'resolves the namespace from the first path segment' do
+      expect(subject.uri).to eq('k8s-container://prod/shell-demo/nginx')
+    end
+  end
+
   describe '#file' do
     context 'path validation' do
       it 'rejects nil path' do
