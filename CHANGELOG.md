@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.2](https://github.com/mitre/train-k8s-container/compare/v2.2.1...v2.2.2) (2026-05-28)
+
+
+### Bug Fixes
+
+* parse URI host as K8s namespace ([99e7bda](https://github.com/mitre/train-k8s-container/commit/99e7bda8e0eb36f77053febddae5d4929a5af72b))
+* parse URI host as K8s namespace ([6a8fb88](https://github.com/mitre/train-k8s-container/commit/6a8fb8821a25ae115136137e166abfc3f9258e2d))
+
+
+### Code Refactoring
+
+* **connection:** collapse URI parser branches into case statement ([58206ed](https://github.com/mitre/train-k8s-container/commit/58206ed20e1b11df195ebd0e798f4f69926dc7b3))
+* **connection:** use non-deprecated Train.unpack_target_from_uri ([925c17d](https://github.com/mitre/train-k8s-container/commit/925c17d8ef09391c6badfb1e62d19490904dc50d))
+
+
+### Tests
+
+* **connection:** cover #unique_identifier delegation ([893e28b](https://github.com/mitre/train-k8s-container/commit/893e28bcdbf95b883272fd02e1556dcd7d03fa32))
+* **connection:** pin URI parser behavior with characterization tests ([c2c0c34](https://github.com/mitre/train-k8s-container/commit/c2c0c3490c58e25f2cee54d8156c78d74a64d47e))
+
 ## [2.2.1](https://github.com/mitre/train-k8s-container/compare/v2.2.0...v2.2.1) (2026-01-17)
 
 
