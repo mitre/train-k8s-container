@@ -73,11 +73,12 @@ RSpec.describe 'PtySession Integration', type: :integration do
         kubectl_cmd: kubectl_cmd
       )
 
-      result = session.execute('nonexistent-command')
+      # Put the diagnostic on the same remote stream as the exit marker so
+      # kubectl delivers it before the marker, regardless of stderr timing.
+      result = session.execute('nonexistent-command 2>&1')
 
-      # The exit marker is on stdout; kubectl forwards shell stderr separately,
-      # so its diagnostic can arrive after the marker and outside this result.
       expect(result.exit_status).not_to eq(0)
+      expect(result.stdout).to include('not found')
     end
 
     it 'handles multi-line output' do
