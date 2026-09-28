@@ -75,9 +75,9 @@ RSpec.describe 'PtySession Integration', type: :integration do
 
       result = session.execute('nonexistent-command')
 
+      # The exit marker is on stdout; kubectl forwards shell stderr separately,
+      # so its diagnostic can arrive after the marker and outside this result.
       expect(result.exit_status).not_to eq(0)
-      # PTY merges stdout/stderr - error message appears in stdout
-      expect(result.stdout).to include('not found')
     end
 
     it 'handles multi-line output' do
