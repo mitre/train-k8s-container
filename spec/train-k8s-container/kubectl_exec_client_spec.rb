@@ -119,7 +119,8 @@ RSpec.describe TrainPlugins::K8sContainer::KubectlExecClient do
       expect { client.execute('cat /etc/os-release | grep ID') }
         .to raise_error(TrainPlugins::K8sContainer::ShellNotAvailableError) do |error|
           expect(error.message).to include("container #{namespace}/#{pod}/#{container_name}")
-          expect(error.message).to include('distroless')
+          expect(error.message).to include('No supported shell found')
+          expect(error.message).to include('Cannot run shell command: cat /etc/os-release | grep ID')
           expect(error.message).to include('Only direct executable commands can run without a shell')
         end
     end
