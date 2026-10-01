@@ -73,10 +73,10 @@ RSpec.describe 'PtySession Integration', type: :integration do
         kubectl_cmd: kubectl_cmd
       )
 
-      result = session.execute('nonexistent-command')
+      # Manually merge stdout and stderr so that we are not dependent on PTY's timing to have the error message appear in stdout
+      result = session.execute('nonexistent-command 2>&1')
 
       expect(result.exit_status).not_to eq(0)
-      # PTY merges stdout/stderr - error message appears in stdout
       expect(result.stdout).to include('not found')
     end
 
