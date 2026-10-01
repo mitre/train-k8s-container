@@ -1,0 +1,7 @@
+name: distroless-transport-validation
+title: Distroless transport validation
+version: 0.1.0
+summary: Validation of transport behavior in a distroless Kubernetes container
+maintainer: MITRE SAF Team
+copyright: MITRE Corporation
+license: Apache-2.0

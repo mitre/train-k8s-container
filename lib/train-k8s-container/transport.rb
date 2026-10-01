@@ -15,6 +15,8 @@ module TrainPlugins
       option :pod, default: nil
       option :container_name, default: nil
       option :namespace, default: nil
+      option :use_ephemeral_container, default: ENV['TRAIN_K8S_EPHEMERAL'] == 'true'
+      option :ephemeral_image, default: 'busybox:1.36-musl'
 
       def connection(state = nil, &)
         opts = merge_options(@options, state || {})

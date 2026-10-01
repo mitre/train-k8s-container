@@ -18,5 +18,7 @@ module TrainPlugins
 
     # Container has no shell (distroless) and command requires one
     class ShellNotAvailableError < K8sContainerError; end
+
+    class EphemeralContainerError < K8sContainerError; end
   end
 end

@@ -7,6 +7,7 @@ require 'train/file/remote/windows'
 require_relative 'platform'
 require_relative 'kubernetes_name_validator'
 require_relative 'kubectl_exec_client'
+require_relative 'ephemeral_container_client'
 
 module TrainPlugins
   module K8sContainer
@@ -53,6 +54,8 @@ module TrainPlugins
         end
 
         validate_parameters
+        @use_ephemeral_container = options[:use_ephemeral_container] == true || options[:use_ephemeral_container] == 'true'
+        @ephemeral_image = options[:ephemeral_image] || 'busybox:1.36-musl'
       end
 
       def uri
@@ -73,6 +76,14 @@ module TrainPlugins
           pod:,
           namespace:,
           container_name:
+        )
+        return @kubectl_client unless @use_ephemeral_container
+        return @active_client if @active_client
+        return @kubectl_client if @kubectl_client.shell_available?
+
+        @active_client = EphemeralContainerClient.new(
+          pod:, namespace:, target_container_name: container_name,
+          image: @ephemeral_image
         )
       end
 

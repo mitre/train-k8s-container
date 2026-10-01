@@ -3,6 +3,7 @@
 require 'mixlib/shellout' unless defined?(Mixlib::ShellOut)
 require 'shellwords'
 require 'logger'
+require 'pathname'
 require 'train/options'
 require 'train/extras'
 require_relative 'retry_handler'
@@ -10,6 +11,7 @@ require_relative 'session_manager'
 require_relative 'ansi_sanitizer'
 require_relative 'kubectl_command_builder'
 require_relative 'result_processor'
+require_relative 'ephemeral_container'
 
 module TrainPlugins
   module K8sContainer
@@ -22,7 +24,8 @@ module TrainPlugins
       DEFAULT_TIMEOUT = 60
       SHELL_DETECTION_TIMEOUT = 5
 
-      def initialize(pod:, namespace: nil, container_name: nil, kubectl_path: 'kubectl', timeout: DEFAULT_TIMEOUT, logger: nil, use_pty: nil)
+      def initialize(pod:, namespace: nil, container_name: nil, kubectl_path: 'kubectl', timeout: DEFAULT_TIMEOUT, logger: nil, use_pty: nil,
+                     use_ephemeral_container: false, ephemeral_image: EphemeralContainer::DEFAULT_IMAGE)
         @pod = pod
         @container_name = container_name
         @namespace = namespace
@@ -30,6 +33,9 @@ module TrainPlugins
         @timeout = timeout
         @logger = logger || default_logger
         @shell_detector = nil # Will be created lazily
+        @use_ephemeral_container = use_ephemeral_container
+        @ephemeral_image = ephemeral_image
+        @ephemeral_active = false
         # Default to enabled (opt-out via use_pty: false or TRAIN_K8S_SESSION_MODE=false)
         @use_pty = use_pty.nil? ? (ENV['TRAIN_K8S_SESSION_MODE'] != 'false') : use_pty
         @pty_fallback_disabled = false
@@ -43,6 +49,8 @@ module TrainPlugins
 
       def execute(command, opts = {})
         @logger.debug("Executing command in #{@namespace}/#{@pod}/#{@container_name}: #{command}")
+
+        activate_ephemeral_container if @use_ephemeral_container && !@ephemeral_active && !detect_shell
 
         if @use_pty && pty_available? && !@pty_fallback_disabled
           execute_via_pty(command, opts)
@@ -71,7 +79,37 @@ module TrainPlugins
         "#{@namespace}/#{@pod}/#{@container_name}"
       end
 
+      def ephemeral_active?
+        @ephemeral_active
+      end
+
+      def ensure_execution_target
+        activate_ephemeral_container if @use_ephemeral_container && !@ephemeral_active && !detect_shell
+        @ephemeral_active
+      end
+
+      def target_file_path(path)
+        return path unless @ephemeral_active
+        raise ArgumentError, 'Target file path must be absolute' unless path.start_with?('/')
+
+        "#{EphemeralContainer::TARGET_ROOT}#{Pathname.new(path).cleanpath}"
+      end
+
       private
+
+      def activate_ephemeral_container
+        @ephemeral_container ||= EphemeralContainer.new(
+          kubectl_path: @kubectl_path, pod: @pod, namespace: @namespace,
+          target_container: @container_name, image: @ephemeral_image, logger: @logger
+        )
+        debug_name = @ephemeral_container.ensure_running
+        @command_builder = KubectlCommandBuilder.new(
+          kubectl_path: @kubectl_path, pod: @pod, namespace: @namespace, container_name: debug_name
+        )
+        @shell_detector = nil
+        @pty_fallback_disabled = true
+        @ephemeral_active = true
+      end
 
       def pty_available?
         # PTY only works on Unix-like operating systems

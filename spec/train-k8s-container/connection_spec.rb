@@ -114,6 +114,39 @@ RSpec.describe TrainPlugins::K8sContainer::Connection do
     end
   end
 
+  describe 'ephemeral container opt-in' do
+    let(:options) do
+      { pod: 'shell-demo', container_name: 'nginx', namespace: 'default', use_ephemeral_container: true }
+    end
+
+    before do
+      allow(TrainPlugins::K8sContainer::KubectlExecClient).to receive(:new)
+        .with(pod: 'shell-demo', namespace: 'default', container_name: 'nginx').and_return(kube_client)
+      allow(kube_client).to receive(:shell_available?).and_return(false)
+    end
+
+    it 'uses a single helper when the target has no shell' do
+      helper = double(execute: shell_op)
+      allow(TrainPlugins::K8sContainer::EphemeralContainerClient).to receive(:new).and_return(helper)
+
+      expect(subject.run_command('uname')).to eq(shell_op)
+      expect(subject.run_command('uname -a')).to eq(shell_op)
+      expect(TrainPlugins::K8sContainer::EphemeralContainerClient).to have_received(:new).once
+    end
+
+    it 'keeps using the target when it has a shell' do
+      allow(kube_client).to receive(:shell_available?).and_return(true)
+      expect(TrainPlugins::K8sContainer::EphemeralContainerClient).not_to receive(:new)
+      expect(subject.run_command('uname')).to eq(shell_op)
+    end
+  end
+
+  it 'does not inspect or modify the pod unless ephemeral mode is enabled' do
+    expect(kube_client).not_to receive(:shell_available?)
+    expect(TrainPlugins::K8sContainer::EphemeralContainerClient).not_to receive(:new)
+    expect(subject.run_command('uname')).to eq(shell_op)
+  end
+
   describe '#file' do
     context 'path validation' do
       it 'rejects nil path' do
