@@ -108,6 +108,31 @@ RSpec.describe TrainPlugins::K8sContainer::KubectlExecClient do
     end
   end
 
+  describe 'execution without a shell' do
+    let(:client) { described_class.new(pod:, namespace:, container_name:, logger: null_logger, use_pty: false) }
+
+    before do
+      allow(client).to receive(:detect_shell).and_return(nil)
+    end
+
+    it 'explains why a shell command cannot run in a shell-less container' do
+      expect { client.execute('cat /etc/os-release | grep ID') }
+        .to raise_error(TrainPlugins::K8sContainer::ShellNotAvailableError) do |error|
+          expect(error.message).to include("container #{namespace}/#{pod}/#{container_name}")
+          expect(error.message).to include('No supported shell found')
+          expect(error.message).to include('Cannot run shell command: cat /etc/os-release | grep ID')
+          expect(error.message).to include('Only direct executable commands can run without a shell')
+        end
+    end
+
+    it 'still runs a direct executable command' do
+      allow(client).to receive(:run_shellout).and_return(Train::Extras::CommandResult.new('root', '', 0))
+
+      expect(client.execute('whoami').stdout).to eq('root')
+      expect(client).to have_received(:run_shellout).with(/-- whoami$/, timeout: 60)
+    end
+  end
+
   describe 'PTY mode selection' do
     describe '#pty_available?' do
       it 'returns true on Unix platforms' do

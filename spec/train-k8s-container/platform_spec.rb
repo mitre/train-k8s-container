@@ -274,6 +274,20 @@ RSpec.describe TrainPlugins::K8sContainer::Platform do
         platform = subject.platform
         expect(platform.family_hierarchy).to include('container')
       end
+
+      it 'falls back when a detection probe requires a missing shell' do
+        allow(subject).to receive(:run_command_via_connection)
+          .and_raise(TrainPlugins::K8sContainer::ShellNotAvailableError, 'No supported shell found')
+
+        expect(subject.platform.name).to eq('unknown')
+      end
+
+      it 'preserves connection errors during detection' do
+        allow(subject).to receive(:run_command_via_connection)
+          .and_raise(Train::TransportError, 'pod not found')
+
+        expect { subject.platform }.to raise_error(Train::TransportError, 'pod not found')
+      end
     end
   end
 end

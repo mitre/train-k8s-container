@@ -161,7 +161,8 @@ module TrainPlugins
         # For distroless - can only execute simple binaries
         if command.match?(/[|&;<>()$`\\"]/)
           raise ShellNotAvailableError,
-                "Container has no shell - cannot execute complex command with operators: #{command}"
+                "No supported shell found in container #{unique_identifier}. " \
+                "Cannot run shell command: #{command}. Only direct executable commands can run without a shell."
         end
 
         instruction = @command_builder.direct_binary(command)

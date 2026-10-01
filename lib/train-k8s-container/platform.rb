@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative 'shell_detector'
+require_relative 'errors'
 
 module TrainPlugins
   module K8sContainer
@@ -23,7 +24,7 @@ module TrainPlugins
         # Train raises PlatformDetectionFailed if it can't detect the platform
         begin
           @platform = Train::Platforms::Detect.scan(self)
-        rescue Train::PlatformDetectionFailed
+        rescue Train::PlatformDetectionFailed, ShellNotAvailableError
           # Fall back to unknown platform for distroless/minimal containers
           @platform = nil
         end
