@@ -71,6 +71,10 @@ module TrainPlugins
         "#{@namespace}/#{@pod}/#{@container_name}"
       end
 
+      def shell_available?
+        !detect_shell.nil?
+      end
+
       private
 
       def pty_available?

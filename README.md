@@ -20,6 +20,7 @@ This plugin allows InSpec/Cinc Auditor to scan containers running in Kubernetes 
 - **Multi-Platform Support** - Linux containers (Ubuntu, Alpine, RHEL, distroless)
 - **Shell Detection** - Automatic detection of available shells (bash, sh, ash, zsh)
 - **Platform Detection** - Uses Train's Detect+Context pattern for accurate OS detection
+- **Distroless Scanning** - Optional BusyBox ephemeral container supplies a shell and tools
 - **Security Hardening** - CVE-2021-25743 mitigation, RFC 1123 validation, command injection prevention
 - **Comprehensive Testing** - 95%+ code coverage with unit and integration tests
 
@@ -51,6 +52,7 @@ cinc-auditor plugin install train-k8s-container-mitre-*.gem
 - **kubectl** installed and in PATH
 - **kubeconfig** configured with cluster access (default: `~/.kube/config`)
 - **RBAC permissions** to exec into target pods
+- For optional distroless support, permission to update `pods/ephemeralcontainers` and pull the configured helper image
 
 ## Usage
 
@@ -78,6 +80,10 @@ cinc-auditor shell -t k8s-container:///my-pod/my-container
 
 # Run a compliance profile
 cinc-auditor exec my-profile -t k8s-container://prod/app-pod/app
+
+# Scan a shell-less container through an ephemeral BusyBox container
+TRAIN_K8S_EPHEMERAL=true cinc-auditor exec test/fixtures/profiles/distroless-transport-validation \
+  -t k8s-container://prod/app-pod/app
 
 # Run STIG baseline
 cinc-auditor exec https://github.com/mitre/canonical-ubuntu-22.04-lts-stig-baseline \
@@ -133,6 +139,9 @@ rules:
 - apiGroups: [""]
   resources: ["pods", "pods/exec"]
   verbs: ["get", "list", "create"]
+- apiGroups: [""]
+  resources: ["pods/ephemeralcontainers"]
+  verbs: ["update"] # Only needed for optional distroless scanning
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -157,7 +166,13 @@ roleRef:
 | Ubuntu/Debian | bash | Full support |
 | Alpine/BusyBox | ash/sh | Full support |
 | RHEL/CentOS | bash | Full support |
-| Distroless | N/A | Limited (direct binary only) |
+| Distroless | N/A | Shell and common file checks with ephemeral mode enabled; direct binaries otherwise |
+
+### Ephemeral container mode
+
+Set `TRAIN_K8S_EPHEMERAL=true` or pass `use_ephemeral_container: true` as a Train transport option. The mode starts a BusyBox helper only when shell detection fails in the target. Set the `ephemeral_image` transport option to use a different image containing a statically linked BusyBox; the default is `busybox:1.36-musl`. A static binary is needed because the helper's tools execute inside the target root filesystem, which may have no compatible dynamic linker or C library.
+
+The helper targets the application container's process namespace and runs its shell and utilities against `/proc/1/root`, the application's filesystem. It uses the `general` debug profile, which grants `SYS_PTRACE` to read the target process root. This requires runtime support for `kubectl debug --target`, a running application process at PID 1 in that namespace, access to `/proc`, and permission to execute `chroot` in the helper. Cluster admission policy must allow the `general` profile. Pods with a shared process namespace may have a pause process at PID 1, so this mode does not support those pods. Ephemeral containers remain in the pod until the pod is deleted; Kubernetes does not allow removing them individually. Reconnecting with a new Train connection can add another helper.
 
 ### Not Yet Supported
 
@@ -171,6 +186,7 @@ roleRef:
 |----------|-------------|---------|
 | `KUBECONFIG` | Path to kubeconfig file | `~/.kube/config` |
 | `TRAIN_K8S_DEBUG` | Enable debug logging | `false` |
+| `TRAIN_K8S_EPHEMERAL` | Enable the ephemeral container helper | `false` |
 
 ## Development
 
