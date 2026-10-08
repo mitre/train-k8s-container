@@ -35,7 +35,7 @@ runs:
   using: 'composite'
   steps:
     - name: Create kind cluster
-      uses: container-tools/kind-action@v2
+      uses: container-tools/kind-action@0ad70e2299366b0e1552c7240f4e4567148f723e # v2.0.4
       with:
         version: ${{ inputs.kind-version }}
         node_image: kindest/node:${{ inputs.k8s-version }}
