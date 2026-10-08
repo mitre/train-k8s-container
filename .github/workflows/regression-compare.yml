@@ -59,7 +59,7 @@ jobs:
           cd /tmp/original-train-k8s-container
           echo "Building original gem..."
           gem build train-k8s-container.gemspec
-          ls -la *.gem
+          ls -la ./*.gem
           echo "Installing original gem..."
           cinc-auditor plugin install train-k8s-container-*.gem
           cinc-auditor plugin list
@@ -67,7 +67,7 @@ jobs:
       - name: "BASELINE: Run regression tests"
         run: |
           echo "Running regression tests with original gem..."
-          cinc-auditor exec ${{ env.PROFILE_PATH }} \
+          cinc-auditor exec "$PROFILE_PATH" \
             -t k8s-container:///test-ubuntu/test-ubuntu \
             --reporter cli json:baseline-results.json || true
 
@@ -91,7 +91,7 @@ jobs:
       - name: "TEST: Run regression tests"
         run: |
           echo "Running regression tests with MITRE fork..."
-          cinc-auditor exec ${{ env.PROFILE_PATH }} \
+          cinc-auditor exec "$PROFILE_PATH" \
             -t k8s-container:///test-ubuntu/test-ubuntu \
             --reporter cli json:current-results.json || true
 

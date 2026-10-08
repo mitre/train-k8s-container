@@ -51,40 +51,49 @@ runs:
 
     - name: Create test pods
       shell: bash
+      env:
+        CREATE_UBUNTU: ${{ inputs.create-ubuntu }}
+        CREATE_ALPINE: ${{ inputs.create-alpine }}
+        CREATE_DISTROLESS: ${{ inputs.create-distroless }}
+        WAIT_TIMEOUT: ${{ inputs.wait-timeout }}
       run: |
         # Ubuntu pod
-        if [ "${{ inputs.create-ubuntu }}" = "true" ]; then
+        if [ "$CREATE_UBUNTU" = "true" ]; then
           echo "Creating Ubuntu test pod..."
           kubectl run test-ubuntu --image=ubuntu:22.04 --restart=Never -- sleep infinity
         fi
 
         # Alpine pod
-        if [ "${{ inputs.create-alpine }}" = "true" ]; then
+        if [ "$CREATE_ALPINE" = "true" ]; then
           echo "Creating Alpine test pod..."
           kubectl run test-alpine --image=alpine:3.18 --restart=Never -- sleep infinity
         fi
 
         # Distroless pod
-        if [ "${{ inputs.create-distroless }}" = "true" ]; then
+        if [ "$CREATE_DISTROLESS" = "true" ]; then
           echo "Creating Distroless test pod..."
           kubectl run test-distroless --image=registry.k8s.io/pause:3.9 --restart=Never
         fi
 
         # Wait for pods to be Ready
-        if [ "${{ inputs.create-ubuntu }}" = "true" ]; then
-          kubectl wait --for=condition=Ready pod/test-ubuntu --timeout=${{ inputs.wait-timeout }}
+        if [ "$CREATE_UBUNTU" = "true" ]; then
+          kubectl wait --for=condition=Ready pod/test-ubuntu --timeout="$WAIT_TIMEOUT"
         fi
-        if [ "${{ inputs.create-alpine }}" = "true" ]; then
-          kubectl wait --for=condition=Ready pod/test-alpine --timeout=${{ inputs.wait-timeout }}
+        if [ "$CREATE_ALPINE" = "true" ]; then
+          kubectl wait --for=condition=Ready pod/test-alpine --timeout="$WAIT_TIMEOUT"
         fi
-        if [ "${{ inputs.create-distroless }}" = "true" ]; then
-          kubectl wait --for=condition=Ready pod/test-distroless --timeout=${{ inputs.wait-timeout }}
+        if [ "$CREATE_DISTROLESS" = "true" ]; then
+          kubectl wait --for=condition=Ready pod/test-distroless --timeout="$WAIT_TIMEOUT"
         fi
 
         kubectl get pods
 
     - name: Verify pods are operational
       shell: bash
+      env:
+        CREATE_UBUNTU: ${{ inputs.create-ubuntu }}
+        CREATE_ALPINE: ${{ inputs.create-alpine }}
+        CREATE_DISTROLESS: ${{ inputs.create-distroless }}
       run: |
         # Function to verify a pod with shell is truly ready
         verify_pod_ready() {
@@ -128,17 +137,17 @@ runs:
         }
 
         # Verify pods based on what was created
-        if [ "${{ inputs.create-ubuntu }}" = "true" ]; then
+        if [ "$CREATE_UBUNTU" = "true" ]; then
           verify_pod_ready test-ubuntu
           kubectl exec test-ubuntu -- /bin/bash -c "echo 'bash works'"
         fi
 
-        if [ "${{ inputs.create-alpine }}" = "true" ]; then
+        if [ "$CREATE_ALPINE" = "true" ]; then
           verify_pod_ready test-alpine
           kubectl exec test-alpine -- /bin/sh -c "echo 'sh works'"
         fi
 
-        if [ "${{ inputs.create-distroless }}" = "true" ]; then
+        if [ "$CREATE_DISTROLESS" = "true" ]; then
           verify_distroless_ready test-distroless
         fi
 
