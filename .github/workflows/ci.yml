@@ -269,12 +269,14 @@ jobs:
               && rm -rf /var/lib/apt/lists/*
 
           # Install kubectl
-          RUN curl -LO "https://dl.k8s.io/release/v1.30.0/bin/linux/amd64/kubectl" \
+          RUN curl -fLO --proto '=https' --proto-redir '=https' "https://dl.k8s.io/release/v1.30.0/bin/linux/amd64/kubectl" \
               && chmod +x kubectl \
               && mv kubectl /usr/local/bin/
 
           # Install Cinc Auditor (open-source, license-free InSpec distribution)
-          RUN curl -L https://omnitruck.cinc.sh/install.sh | bash -s -- -P cinc-auditor
+          RUN curl -fL --proto '=https' --proto-redir '=https' https://omnitruck.cinc.sh/install.sh -o /tmp/install-cinc.sh \
+              && bash /tmp/install-cinc.sh -P cinc-auditor \
+              && rm /tmp/install-cinc.sh
 
           # Copy and install the train-k8s-container gem
           COPY train-k8s-container-*.gem /tmp/

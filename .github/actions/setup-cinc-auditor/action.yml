@@ -26,7 +26,7 @@ runs:
       shell: bash
       run: |
         echo "Installing Cinc Auditor (open-source, license-free InSpec distribution)..."
-        curl -L https://omnitruck.cinc.sh/install.sh | sudo bash -s -- -P cinc-auditor
+        curl -fL --proto '=https' --proto-redir '=https' https://omnitruck.cinc.sh/install.sh | sudo bash -s -- -P cinc-auditor
         cinc-auditor version
 
     - name: Install SAF CLI
