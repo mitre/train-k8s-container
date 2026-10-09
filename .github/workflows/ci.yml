@@ -110,14 +110,14 @@ jobs:
         run: bundle install
 
       - name: Test plugin with real pods (Direct Ruby)
-        run: bundle exec ruby test/scripts/test_live.rb
         env:
           KUBECONFIG: /home/runner/.kube/config
+        run: bundle exec ruby test/scripts/test_live.rb
 
       - name: Run RSpec integration tests
-        run: bundle exec rspec spec/integration --format documentation
         env:
           KUBECONFIG: /home/runner/.kube/config
+        run: bundle exec rspec spec/integration --format documentation
 
       - name: Download gem artifact
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2

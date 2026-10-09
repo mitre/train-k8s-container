@@ -32,7 +32,7 @@ runs:
     - name: Install SAF CLI
       if: inputs.install-saf-cli == 'true'
       shell: bash
-      run: |
+      run: | # zizmor: ignore[adhoc-packages] -- External test CLI; no Node manifest.
         echo "Installing SAF CLI..."
         npm install -g @mitre/saf
         saf --version
