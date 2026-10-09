@@ -39,6 +39,7 @@ runs:
       with:
         version: ${{ inputs.kind-version }}
         node_image: kindest/node:${{ inputs.k8s-version }}
+        kubectl_version: ${{ inputs.k8s-version }}
         cluster_name: ${{ inputs.cluster-name }}
         wait: 60s
 
