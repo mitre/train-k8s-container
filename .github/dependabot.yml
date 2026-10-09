@@ -1,0 +1,29 @@
+version: 2
+updates:
+  - package-ecosystem: bundler
+    directory: /
+    schedule:
+      interval: daily
+      time: '20:00'
+      timezone: America/New_York
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 99
+    allow:
+      - dependency-type: all
+
+  - package-ecosystem: github-actions
+    directories:
+      - /
+      - /.github/actions/*
+    groups:
+      actions-deps:
+        group-by: dependency-name
+        patterns: ['*']
+    schedule:
+      interval: daily
+      time: '20:00'
+      timezone: America/New_York
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 99
