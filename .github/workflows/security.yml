@@ -24,7 +24,6 @@ permissions:
   contents: read
 
 env:
-  RUBY_VERSION: '3.3'
   BUNDLE_WITH: audit
 
 jobs:
@@ -70,9 +69,8 @@ jobs:
           persist-credentials: false
 
       - name: Set up Ruby
-        uses: ruby/setup-ruby@14594264cd68ce8a2345dd349bc3d138a4ef85c8 # v1.327.0
+        uses: $/.github/actions/setup-ruby
         with:
-          ruby-version: ${{ env.RUBY_VERSION }}
           bundler-cache: true
 
       - name: Update vulnerability database
@@ -105,9 +103,8 @@ jobs:
           persist-credentials: false
 
       - name: Set up Ruby
-        uses: ruby/setup-ruby@14594264cd68ce8a2345dd349bc3d138a4ef85c8 # v1.327.0
+        uses: $/.github/actions/setup-ruby
         with:
-          ruby-version: ${{ env.RUBY_VERSION }}
           bundler-cache: true
 
       - name: Generate SBOM (JSON)
@@ -148,9 +145,8 @@ jobs:
           persist-credentials: false
 
       - name: Set up Ruby
-        uses: ruby/setup-ruby@14594264cd68ce8a2345dd349bc3d138a4ef85c8 # v1.327.0
+        uses: $/.github/actions/setup-ruby
         with:
-          ruby-version: ${{ env.RUBY_VERSION }}
           bundler-cache: true
 
       - name: Run license audit

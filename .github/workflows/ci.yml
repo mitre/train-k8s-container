@@ -17,9 +17,6 @@ concurrency:
 permissions:
   contents: read
 
-env:
-  RUBY_VERSION_DEFAULT: '3.3'
-
 jobs:
   # Job 1: Build gem (runs first, uploads artifact)
   build-gem:
@@ -32,9 +29,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up Ruby
-        uses: ruby/setup-ruby@14594264cd68ce8a2345dd349bc3d138a4ef85c8 # v1.327.0
-        with:
-          ruby-version: ${{ env.RUBY_VERSION_DEFAULT }}
+        uses: $/.github/actions/setup-ruby
 
       - name: Build gem
         run: gem build train-k8s-container.gemspec
@@ -60,13 +55,10 @@ jobs:
           persist-credentials: false
 
       - name: Set up Ruby ${{ matrix.ruby-version }}
-        uses: ruby/setup-ruby@14594264cd68ce8a2345dd349bc3d138a4ef85c8 # v1.327.0
+        uses: $/.github/actions/setup-ruby
         with:
           ruby-version: ${{ matrix.ruby-version }}
           bundler-cache: true
-
-      - name: Install dependencies
-        run: bundle install
 
       - name: Run Cookstyle
         run: bundle exec rake style
@@ -103,13 +95,10 @@ jobs:
           create-distroless: 'true'
 
       - name: Set up Ruby ${{ matrix.ruby-version }}
-        uses: ruby/setup-ruby@14594264cd68ce8a2345dd349bc3d138a4ef85c8 # v1.327.0
+        uses: $/.github/actions/setup-ruby
         with:
           ruby-version: ${{ matrix.ruby-version }}
           bundler-cache: true
-
-      - name: Install dependencies
-        run: bundle install
 
       - name: Test plugin with real pods (Direct Ruby)
         env:
