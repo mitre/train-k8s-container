@@ -39,3 +39,19 @@ jobs:
           inputs: .github
           advanced-security: false
           annotations: true
+
+  cookstyle:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Ruby
+        uses: $/.github/actions/setup-ruby
+        with:
+          bundler-cache: true
+
+      - name: Run Cookstyle
+        run: bundle exec rake style

@@ -38,7 +38,7 @@ jobs:
           path: train-k8s-container-*.gem
           retention-days: 5
 
-  # Job 2: Fast unit tests and linting (no Kubernetes needed)
+  # Unit tests (no Kubernetes needed)
   unit-tests:
     runs-on: ubuntu-latest
     strategy:
@@ -56,9 +56,6 @@ jobs:
         with:
           ruby-version: ${{ matrix.ruby-version }}
           bundler-cache: true
-
-      - name: Run Cookstyle
-        run: bundle exec rake style
 
       - name: Run unit tests
         run: bundle exec rspec --format documentation
