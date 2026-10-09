@@ -19,11 +19,8 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Set up Ruby
-        uses: $/.github/actions/setup-ruby
-
       - name: Build gem
-        run: gem build train-k8s-container.gemspec
+        uses: $/.github/actions/build-gem
 
       - name: Upload gem to release # zizmor: ignore[superfluous-actions] -- Use the action's asset matching and overwrite handling.
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
