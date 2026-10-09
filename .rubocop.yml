@@ -1,5 +1,5 @@
 AllCops:
-  TargetRubyVersion: 3.1  # Match gemspec minimum (InSpec 6.x embedded Ruby)
+  TargetRubyVersion: 3.3  # Match gemspec minimum
   NewCops: enable
   SuggestExtensions: false
   Exclude:
@@ -39,7 +39,7 @@ Metrics/BlockLength:
 Layout/LineLength:
   Max: 150
 
-# Gemspec - Support Ruby >= 3.1 (InSpec 6.x) but develop on 3.3
+# Gemspec - Minimum Ruby version is declared in the gemspec
 Gemspec/RequiredRubyVersion:
   Enabled: false
 

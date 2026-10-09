@@ -18,7 +18,7 @@ Gem::Specification.new do |spec|
   DESC
   spec.homepage = 'https://github.com/mitre/train-k8s-container'
   spec.license = 'Apache-2.0'
-  spec.required_ruby_version = '>= 3.1'
+  spec.required_ruby_version = '>= 3.3'
 
   spec.metadata['rubygems_mfa_required'] = 'true'
   spec.metadata['source_code_uri'] = 'https://github.com/mitre/train-k8s-container'

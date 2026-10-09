@@ -4,7 +4,7 @@ This guide covers local development and testing for train-k8s-container.
 
 ## Prerequisites
 
-- Ruby 3.1+ (3.3 recommended)
+- Ruby 3.3+
 - Bundler
 - Docker (for integration testing)
 - [kind](https://kind.sigs.k8s.io/) (Kubernetes IN Docker)
@@ -286,7 +286,7 @@ This allows InSpec resources to work correctly (`os.linux?` = true) while still 
 
 GitHub Actions runs on every push/PR:
 
-- **Unit tests**: Ruby 3.1, 3.2, 3.3
+- **Unit tests**: Ruby 3.3, 3.4, 4.0
 - **Integration tests**: Kubernetes 1.29, 1.30, 1.31
 - **Security scans**: TruffleHog, bundler-audit, SBOM
 - **Pod-to-pod tests**: InSpec running inside cluster

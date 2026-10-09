@@ -238,7 +238,7 @@ Releases are **fully automated** using [release-please](https://github.com/googl
    - Shows the proposed version change
 
 2. **Auto-Merge When CI Passes**: The Release PR automatically merges once all CI checks pass:
-   - Unit tests (Ruby 3.1, 3.2, 3.3)
+   - Unit tests (Ruby 3.3, 3.4, 4.0)
    - Integration tests (Kubernetes 1.29, 1.30, 1.31)
    - Security audit
    - Branch protection enforces all checks must pass
