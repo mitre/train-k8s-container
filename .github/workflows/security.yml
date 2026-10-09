@@ -21,6 +21,7 @@ permissions:
 
 env:
   RUBY_VERSION: '3.3'
+  BUNDLE_WITH: audit
 
 jobs:
   # Job 1: Secret Scanning with TruffleHog
@@ -70,15 +71,12 @@ jobs:
           ruby-version: ${{ env.RUBY_VERSION }}
           bundler-cache: true
 
-      - name: Install bundler-audit
-        run: gem install bundler-audit
-
       - name: Update vulnerability database
-        run: bundler-audit update
+        run: bundle exec bundler-audit update
 
       - name: Run vulnerability scan
         run: |
-          bundler-audit check --verbose || echo "::warning::Vulnerabilities found - check logs above"
+          bundle exec bundler-audit check --verbose || echo "::warning::Vulnerabilities found - check logs above"
           echo "::notice::Dependency vulnerability scan completed"
         continue-on-error: true
 
@@ -108,12 +106,9 @@ jobs:
           ruby-version: ${{ env.RUBY_VERSION }}
           bundler-cache: true
 
-      - name: Install CycloneDX
-        run: gem install cyclonedx-ruby
-
       - name: Generate SBOM (JSON)
         run: |
-          cyclonedx-ruby -p . -o sbom.json
+          bundle exec cyclonedx-ruby -p . -o sbom.json
           echo "✅ Generated CycloneDX SBOM in JSON format"
 
       - name: Upload SBOM artifacts
@@ -154,12 +149,9 @@ jobs:
           ruby-version: ${{ env.RUBY_VERSION }}
           bundler-cache: true
 
-      - name: Install license_finder
-        run: gem install license_finder
-
       - name: Run license audit
         run: |
-          license_finder report --format text || echo "::warning::License issues found"
+          bundle exec license_finder report --format text || echo "::warning::License issues found"
         continue-on-error: true  # First run may need decisions file
 
       - name: License audit summary
