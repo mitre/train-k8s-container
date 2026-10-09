@@ -16,6 +16,10 @@ on:
     - cron: '0 6 * * 1'
   workflow_dispatch:  # Allow manual triggering
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 permissions:
   contents: read
 
