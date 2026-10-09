@@ -162,18 +162,12 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Create kind cluster
-        uses: container-tools/kind-action@0ad70e2299366b0e1552c7240f4e4567148f723e # v2.0.4
+      - name: Setup test cluster with pods
+        uses: $/.github/actions/setup-test-cluster
         with:
-          version: v0.20.0
-          kubectl_version: v1.30.0
-          cluster_name: pod-to-pod-cluster
-          wait: 60s
-
-      - name: Verify cluster
-        run: |
-          kubectl cluster-info
-          kubectl get nodes
+          cluster-name: pod-to-pod-cluster
+          create-ubuntu: 'true'
+          create-alpine: 'true'
 
       - name: Download gem artifact
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
@@ -212,33 +206,6 @@ jobs:
             name: inspec-scanner-role
             apiGroup: rbac.authorization.k8s.io
           EOF
-
-      - name: Create target pods
-        run: |
-          # Create single-container pods to be scanned (pod-to-pod scenario)
-          kubectl run target-ubuntu --image=ubuntu:22.04 --restart=Never -- sleep infinity
-          kubectl run target-alpine --image=alpine:3.18 --restart=Never -- sleep infinity
-
-          # Wait for target pods (multi-container-pod created after Docker image build)
-          kubectl wait --for=condition=Ready pod/target-ubuntu --timeout=120s
-          kubectl wait --for=condition=Ready pod/target-alpine --timeout=120s
-
-      - name: Verify target pods are operational
-        run: |
-          # Verify single-container pods can execute commands
-          max_attempts=30
-          for pod in target-ubuntu target-alpine; do
-            attempt=1
-            while [ $attempt -le $max_attempts ]; do
-              if kubectl exec "$pod" -- echo "ready" 2>/dev/null | grep -q "ready"; then
-                echo "✅ $pod is ready"
-                break
-              fi
-              echo "Waiting for $pod... ($attempt/$max_attempts)"
-              sleep 2
-              attempt=$((attempt + 1))
-            done
-          done
 
       - name: Build Cinc Auditor scanner image
         run: |
@@ -363,11 +330,11 @@ jobs:
 
       - name: Test pod-to-pod detect
         run: |
-          echo "Testing Cinc Auditor detect from scanner pod to target-ubuntu..."
-          kubectl exec cinc-scanner -- cinc-auditor detect -t k8s-container:///target-ubuntu/target-ubuntu
+          echo "Testing Cinc Auditor detect from scanner pod to test-ubuntu..."
+          kubectl exec cinc-scanner -- cinc-auditor detect -t k8s-container:///test-ubuntu/test-ubuntu
 
-          echo "Testing Cinc Auditor detect from scanner pod to target-alpine..."
-          kubectl exec cinc-scanner -- cinc-auditor detect -t k8s-container:///target-alpine/target-alpine
+          echo "Testing Cinc Auditor detect from scanner pod to test-alpine..."
+          kubectl exec cinc-scanner -- cinc-auditor detect -t k8s-container:///test-alpine/test-alpine
 
       - name: Test pod-to-pod commands
         run: |
@@ -375,16 +342,16 @@ jobs:
 
           # Test Ubuntu target
           kubectl exec cinc-scanner -- cinc-auditor shell \
-            -t k8s-container:///target-ubuntu/target-ubuntu \
+            -t k8s-container:///test-ubuntu/test-ubuntu \
             --command "command('whoami').stdout"
 
           kubectl exec cinc-scanner -- cinc-auditor shell \
-            -t k8s-container:///target-ubuntu/target-ubuntu \
+            -t k8s-container:///test-ubuntu/test-ubuntu \
             --command "user('root').exists?"
 
           # Test Alpine target
           kubectl exec cinc-scanner -- cinc-auditor shell \
-            -t k8s-container:///target-alpine/target-alpine \
+            -t k8s-container:///test-alpine/test-alpine \
             --command "command('cat /etc/alpine-release').stdout"
 
       - name: Test pod-to-pod with simple profile
@@ -416,22 +383,22 @@ jobs:
           EOF'
 
           # Run the profile against target pods
-          echo "Running profile against target-ubuntu..."
+          echo "Running profile against test-ubuntu..."
           kubectl exec cinc-scanner -- cinc-auditor exec /work/test-profile \
-            -t k8s-container:///target-ubuntu/target-ubuntu || true
+            -t k8s-container:///test-ubuntu/test-ubuntu || true
 
-          echo "Running profile against target-alpine..."
+          echo "Running profile against test-alpine..."
           kubectl exec cinc-scanner -- cinc-auditor exec /work/test-profile \
-            -t k8s-container:///target-alpine/target-alpine || true
+            -t k8s-container:///test-alpine/test-alpine || true
 
       - name: Test with real STIG profile
         run: |
           # Run a real STIG profile to prove the plugin works with actual compliance content
           # Using the Container-test branch which is optimized for container scanning
-          echo "Running canonical Ubuntu 22.04 STIG baseline against target-ubuntu..."
+          echo "Running canonical Ubuntu 22.04 STIG baseline against test-ubuntu..."
           kubectl exec cinc-scanner -- cinc-auditor exec \
             https://github.com/mitre/canonical-ubuntu-22.04-lts-stig-baseline/archive/refs/heads/Container-test.tar.gz \
-            -t k8s-container:///target-ubuntu/target-ubuntu \
+            -t k8s-container:///test-ubuntu/test-ubuntu \
             --reporter cli json:/work/stig-results.json || true
 
           # Show summary of results
@@ -473,8 +440,8 @@ jobs:
           kubectl logs cinc-scanner || true
 
           echo "=== Target Pod Details ==="
-          kubectl describe pod target-ubuntu
-          kubectl describe pod target-alpine
+          kubectl describe pod test-ubuntu
+          kubectl describe pod test-alpine
 
           echo "=== Multi-Container Pod Details ==="
           kubectl describe pod multi-container-pod
