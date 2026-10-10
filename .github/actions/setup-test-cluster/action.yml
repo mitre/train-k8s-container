@@ -4,12 +4,13 @@ description: 'Creates a kind cluster with test pods for integration testing'
 inputs:
   k8s-version:
     description: 'Kubernetes version for kind cluster'
-    required: false
-    default: 'v1.30.0'
+    required: true
   kind-version:
     description: 'Kind version'
-    required: false
-    default: 'v0.24.0'
+    required: true
+  node-image:
+    description: 'Digest-pinned node image published for the kind version'
+    required: true
   cluster-name:
     description: 'Name for the kind cluster'
     required: false
@@ -38,7 +39,7 @@ runs:
       uses: helm/kind-action@1544676c07bb3570fcb70166beaa07c4528fd4aa # v1.15.1
       with:
         version: ${{ inputs.kind-version }}
-        node_image: kindest/node:${{ inputs.k8s-version }}
+        node_image: ${{ inputs.node-image }}
         kubectl_version: ${{ inputs.k8s-version }}
         cluster_name: ${{ inputs.cluster-name }}
         wait: 60s

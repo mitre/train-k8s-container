@@ -287,9 +287,9 @@ This allows InSpec resources to work correctly (`os.linux?` = true) while still 
 GitHub Actions runs on every push/PR:
 
 - **Unit tests**: Ruby 3.3, 3.4, 4.0
-- **Integration tests**: Kubernetes 1.29, 1.30, 1.31
+- **Integration tests**: Ruby 3.3, 3.4, 4.0 against the three newest Kubernetes minor versions published for the latest stable kind release
 - **Security scans**: TruffleHog, bundler-audit, SBOM
-- **Pod-to-pod tests**: InSpec running inside cluster
+- **Pod-to-pod and regression tests**: The newest Kubernetes version selected above; kubectl matches each cluster version
 
 See `.github/workflows/ci.yml` for details.
 

@@ -18,6 +18,33 @@ permissions:
   contents: read
 
 jobs:
+  kubernetes_versions:
+    runs-on: ubuntu-latest
+    outputs:
+      kind_version: ${{ steps.versions.outputs.kind_version }}
+      kubernetes: ${{ steps.versions.outputs.kubernetes }}
+    steps:
+      - name: Discover Kubernetes versions
+        id: versions
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          release=$(gh api repos/kubernetes-sigs/kind/releases/latest)
+          kind_version=$(jq -r '.tag_name' <<< "$release")
+          kubernetes=$(jq -ce '
+            [.body
+             | scan("kindest/node:(v[0-9]+\\.[0-9]+\\.[0-9]+)@sha256:([a-f0-9]{64})")
+             | {version: .[0], image: ("kindest/node:" + .[0] + "@sha256:" + .[1]),
+                sort: (.[0] | ltrimstr("v") | split(".") | map(tonumber))}]
+            | group_by(.sort[0:2])
+            | map(max_by(.sort))
+            | sort_by(.sort) | reverse | .[:3]
+            | map(del(.sort))
+            | if length == 3 then . else error("kind release must provide three Kubernetes minor versions") end
+          ' <<< "$release")
+
+          printf 'kind_version=%s\nkubernetes=%s\n' "$kind_version" "$kubernetes" | tee -a "$GITHUB_OUTPUT"
+
   # Job 1: Build gem (runs first, uploads artifact)
   build-gem:
     runs-on: ubuntu-latest
@@ -70,16 +97,14 @@ jobs:
 
   # Job 3: Integration tests with kind cluster
   integration-tests:
+    name: integration_tests (${{ matrix.ruby-version }}, ${{ matrix.kubernetes.version }})
     runs-on: ubuntu-latest
-    needs: [build-gem, unit-tests]
+    needs: [build-gem, unit-tests, kubernetes_versions]
     # No CHEF_LICENSE needed - using Cinc Auditor (open-source, license-free)
     strategy:
       matrix:
         ruby-version: ['3.3', '3.4', '4.0']
-        k8s-version:
-          - v1.29.0
-          - v1.30.0
-          - v1.31.0
+        kubernetes: ${{ fromJSON(needs.kubernetes_versions.outputs.kubernetes) }}
 
     steps:
       - name: Checkout code (needed for composite action)
@@ -90,7 +115,9 @@ jobs:
       - name: Setup test cluster with pods
         uses: $/.github/actions/setup-test-cluster
         with:
-          k8s-version: ${{ matrix.k8s-version }}
+          k8s-version: ${{ matrix.kubernetes.version }}
+          kind-version: ${{ needs.kubernetes_versions.outputs.kind_version }}
+          node-image: ${{ matrix.kubernetes.image }}
           cluster-name: test-cluster
           create-ubuntu: 'true'
           create-alpine: 'true'
@@ -116,7 +143,7 @@ jobs:
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: integration-results-ruby-${{ matrix.ruby-version }}-k8s-${{ matrix.k8s-version }}
+          name: integration-results-ruby-${{ matrix.ruby-version }}-k8s-${{ matrix.kubernetes.version }}
           path: ${{ runner.temp }}/integration-results.json
           retention-days: 5
 
@@ -157,14 +184,14 @@ jobs:
         if: failure()
         uses: $/.github/actions/collect-k8s-diagnostics
         with:
-          artifact-name: integration-diagnostics-ruby-${{ matrix.ruby-version }}-k8s-${{ matrix.k8s-version }}
+          artifact-name: integration-diagnostics-ruby-${{ matrix.ruby-version }}-k8s-${{ matrix.kubernetes.version }}
 
   # Job 4: Pod-to-Pod integration tests (InSpec running inside cluster)
   # This tests the scenario where InSpec runs from within a Kubernetes pod
   # and connects to other pods in the same cluster
   pod-to-pod-tests:
     runs-on: ubuntu-latest
-    needs: [build-gem, unit-tests]
+    needs: [build-gem, unit-tests, kubernetes_versions]
     # No CHEF_LICENSE needed - using Cinc Auditor (open-source, license-free)
 
     steps:
@@ -176,6 +203,9 @@ jobs:
       - name: Setup test cluster with pods
         uses: $/.github/actions/setup-test-cluster
         with:
+          k8s-version: ${{ fromJSON(needs.kubernetes_versions.outputs.kubernetes)[0].version }}
+          kind-version: ${{ needs.kubernetes_versions.outputs.kind_version }}
+          node-image: ${{ fromJSON(needs.kubernetes_versions.outputs.kubernetes)[0].image }}
           cluster-name: pod-to-pod-cluster
           create-ubuntu: 'true'
           create-alpine: 'true'
@@ -219,6 +249,8 @@ jobs:
           EOF
 
       - name: Build Cinc Auditor scanner image
+        env:
+          KUBECTL_VERSION: ${{ fromJSON(needs.kubernetes_versions.outputs.kubernetes)[0].version }}
         run: |
           # Create a Dockerfile for the scanner pod with Cinc Auditor
           cat > Dockerfile.scanner <<'EOF'
@@ -232,7 +264,8 @@ jobs:
               && rm -rf /var/lib/apt/lists/*
 
           # Install kubectl
-          RUN curl -fLO --proto '=https' --proto-redir '=https' "https://dl.k8s.io/release/v1.30.0/bin/linux/amd64/kubectl" \
+          ARG KUBECTL_VERSION
+          RUN curl -fLO --proto '=https' --proto-redir '=https' "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl" \
               && chmod +x kubectl \
               && mv kubectl /usr/local/bin/
 
@@ -253,7 +286,7 @@ jobs:
           EOF
 
           # Build the image
-          docker build -f Dockerfile.scanner -t cinc-scanner:local .
+          docker build --build-arg KUBECTL_VERSION="$KUBECTL_VERSION" -f Dockerfile.scanner -t cinc-scanner:local .
 
           # Load into kind cluster
           kind load docker-image cinc-scanner:local --name pod-to-pod-cluster
@@ -467,7 +500,7 @@ jobs:
 
   regression-compare:
     runs-on: ubuntu-latest
-    needs: build-gem
+    needs: [build-gem, kubernetes_versions]
     env:
       PROFILE_PATH: test/fixtures/profiles/inspec-resource-validation
 
@@ -488,6 +521,9 @@ jobs:
       - name: Setup test cluster
         uses: $/.github/actions/setup-test-cluster
         with:
+          k8s-version: ${{ fromJSON(needs.kubernetes_versions.outputs.kubernetes)[0].version }}
+          kind-version: ${{ needs.kubernetes_versions.outputs.kind_version }}
+          node-image: ${{ fromJSON(needs.kubernetes_versions.outputs.kubernetes)[0].image }}
           cluster-name: regression-cluster
           create-ubuntu: 'true'
           create-alpine: 'false'
