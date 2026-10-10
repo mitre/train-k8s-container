@@ -153,16 +153,11 @@ jobs:
             echo "Expected: distroless container may not support shell commands"
           fi
 
-      - name: Debug on failure
+      - name: Collect diagnostics on failure
         if: failure()
-        run: |
-          kubectl get pods -A
-          kubectl describe pod test-ubuntu
-          kubectl describe pod test-alpine
-          kubectl describe pod test-distroless
-          kubectl logs test-ubuntu || true
-          kubectl logs test-alpine || true
-          kubectl logs test-distroless || true
+        uses: $/.github/actions/collect-k8s-diagnostics
+        with:
+          artifact-name: integration-diagnostics-ruby-${{ matrix.ruby-version }}-k8s-${{ matrix.k8s-version }}
 
   # Job 4: Pod-to-Pod integration tests (InSpec running inside cluster)
   # This tests the scenario where InSpec runs from within a Kubernetes pod
@@ -463,28 +458,12 @@ jobs:
           path: ${{ runner.temp }}/pod-results/*.json
           retention-days: 5
 
-      - name: Debug pod-to-pod on failure
+      - name: Collect diagnostics on failure
         if: failure()
-        run: |
-          echo "=== Pod Status ==="
-          kubectl get pods -A
-
-          echo "=== Scanner Pod Details ==="
-          kubectl describe pod cinc-scanner
-          kubectl logs cinc-scanner || true
-
-          echo "=== Target Pod Details ==="
-          kubectl describe pod test-ubuntu
-          kubectl describe pod test-alpine
-
-          echo "=== Multi-Container Pod Details ==="
-          kubectl describe pod multi-container-pod
-          kubectl logs multi-container-pod -c scanner || true
-          kubectl logs multi-container-pod -c target || true
-
-          echo "=== RBAC Check ==="
-          kubectl auth can-i --as=system:serviceaccount:default:inspec-scanner \
-            create pods/exec --all-namespaces || true
+        uses: $/.github/actions/collect-k8s-diagnostics
+        with:
+          artifact-name: pod-to-pod-diagnostics
+          service-account: system:serviceaccount:default:inspec-scanner
 
   regression-compare:
     runs-on: ubuntu-latest
@@ -650,17 +629,8 @@ jobs:
             current-results.json
           retention-days: 30
 
-      - name: Debug on failure
+      - name: Collect diagnostics on failure
         if: failure()
-        run: |
-          echo "=== Pod Status ==="
-          kubectl get pods -A
-
-          echo "=== Test Pod Details ==="
-          kubectl describe pod test-ubuntu
-
-          echo "=== Baseline Results ==="
-          cat baseline-results.json | jq '.profiles[].controls[] | {id: .id, results: .results[].status}' || true
-
-          echo "=== Current Results ==="
-          cat current-results.json | jq '.profiles[].controls[] | {id: .id, results: .results[].status}' || true
+        uses: $/.github/actions/collect-k8s-diagnostics
+        with:
+          artifact-name: regression-diagnostics

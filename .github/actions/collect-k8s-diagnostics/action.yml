@@ -1,0 +1,42 @@
+name: Collect Kubernetes diagnostics
+description: Upload pod state and logs after a test failure
+
+inputs:
+  artifact-name:
+    description: Unique diagnostic artifact name
+    required: true
+  service-account:
+    description: Service account identity to check for pod exec access
+
+runs:
+  using: composite
+  steps:
+    - name: Collect pod state and logs
+      if: ${{ !cancelled() }}
+      shell: bash
+      env:
+        SERVICE_ACCOUNT: ${{ inputs.service-account }}
+      run: |
+        {
+          echo "=== Pod status ==="
+          kubectl get pods -A || true
+          while read -r pod; do
+            echo "=== $pod details ==="
+            kubectl describe "$pod" || true
+            echo "=== $pod logs ==="
+            kubectl logs "$pod" --all-containers=true --prefix=true || true
+          done < <(kubectl get pods -o name)
+          if [[ -n "$SERVICE_ACCOUNT" ]]; then
+            echo "=== RBAC check: $SERVICE_ACCOUNT ==="
+            kubectl auth can-i --as="$SERVICE_ACCOUNT" \
+              create pods/exec --all-namespaces || true
+          fi
+        } 2>&1 | tee "$RUNNER_TEMP/k8s-diagnostics.txt"
+
+    - name: Upload diagnostics
+      if: ${{ !cancelled() }}
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: ${{ runner.temp }}/k8s-diagnostics.txt
+        retention-days: 5
