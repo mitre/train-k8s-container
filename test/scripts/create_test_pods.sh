@@ -38,6 +38,3 @@ echo
 echo "To test with InSpec:"
 echo "  inspec detect -t k8s-container:///test-ubuntu/test-ubuntu"
 echo "  inspec shell -t k8s-container:///test-alpine/test-alpine"
-echo
-echo "To test with Ruby:"
-echo "  ruby test/scripts/test_live.rb"

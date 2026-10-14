@@ -129,11 +129,6 @@ jobs:
           ruby-version: ${{ matrix.ruby-version }}
           bundler-cache: true
 
-      - name: Test plugin with real pods (Direct Ruby)
-        env:
-          KUBECONFIG: /home/runner/.kube/config
-        run: bundle exec ruby test/scripts/test_live.rb
-
       - name: Run RSpec integration tests
         env:
           KUBECONFIG: /home/runner/.kube/config

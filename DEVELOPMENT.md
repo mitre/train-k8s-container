@@ -169,13 +169,6 @@ cinc-auditor shell -t k8s-container:///test-ubuntu/test-ubuntu
 cinc-auditor exec my-profile -t k8s-container:///test-ubuntu/test-ubuntu
 ```
 
-### Using test_live.rb
-
-```bash
-# Requires kind cluster with test pods
-bundle exec ruby test/scripts/test_live.rb
-```
-
 ## Code Quality
 
 ### Linting

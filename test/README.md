@@ -19,7 +19,6 @@ bundle exec rspec spec/integration --tag type:integration
 
 - **setup-kind.sh** - Creates kind cluster with test pods
 - **cleanup-kind.sh** - Removes test cluster
-- **test_live.rb** - Manual smoke testing
 
 ## Configuration
 
