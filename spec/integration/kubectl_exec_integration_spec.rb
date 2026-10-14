@@ -125,7 +125,7 @@ RSpec.describe 'KubectlExecClient Integration', type: :integration do
 
       expect do
         bad_client.execute('whoami')
-      end.to raise_error(/not valid|container/)
+      end.to raise_error(TrainPlugins::K8sContainer::ContainerNotFoundError, /nonexistent-container/)
     end
   end
 
