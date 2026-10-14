@@ -71,7 +71,7 @@ bundle exec rspec --format documentation
 
 ### Integration Tests
 
-Integration tests require a real Kubernetes cluster:
+Integration tests require kubectl and ready `test-ubuntu` and `test-alpine` pods; missing prerequisites fail the suite:
 
 ```bash
 # Setup kind cluster with test pods
