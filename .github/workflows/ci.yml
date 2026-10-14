@@ -137,7 +137,7 @@ jobs:
       - name: Run RSpec integration tests
         env:
           KUBECONFIG: /home/runner/.kube/config
-        run: bundle exec rspec spec/integration --format documentation --format json --out "$RUNNER_TEMP/integration-results.json"
+        run: bundle exec rspec spec/integration --tag type:integration --format documentation --format json --out "$RUNNER_TEMP/integration-results.json"
 
       - name: Upload integration test results
         if: ${{ !cancelled() }}

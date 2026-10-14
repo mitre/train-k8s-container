@@ -103,10 +103,10 @@ echo "  - test-ubuntu (Ubuntu 22.04 with bash)"
 echo "  - test-alpine (Alpine 3.18 with ash/sh)"
 echo
 echo "Run integration tests:"
-echo "  bundle exec rspec --tag integration"
+echo "  bundle exec rspec spec/integration --tag type:integration"
 echo
 echo "Run all tests (unit + integration):"
-echo "  bundle exec rspec"
+echo "  bundle exec rspec && bundle exec rspec spec/integration --tag type:integration"
 echo
 echo "Cleanup when done:"
 echo "  kind delete cluster --name ${CLUSTER_NAME}"

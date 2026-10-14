@@ -113,13 +113,14 @@ See [DEVELOPMENT.md](DEVELOPMENT.md) for detailed local development and testing 
 
 ```bash
 # Unit tests only (fast, no kubectl required)
-bundle exec rspec spec/train-k8s-container
+bundle exec rspec
 
 # Integration tests (requires kind cluster)
-bundle exec rspec spec/integration
+bundle exec rspec spec/integration --tag type:integration
 
 # All tests
 bundle exec rspec
+bundle exec rspec spec/integration --tag type:integration
 
 # With coverage report
 bundle exec rspec

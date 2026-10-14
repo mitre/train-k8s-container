@@ -9,7 +9,7 @@ This directory contains integration testing setup and utilities.
 ./test/setup-kind.sh
 
 # 2. Run integration tests
-bundle exec rspec spec/integration
+bundle exec rspec spec/integration --tag type:integration
 
 # 3. Cleanup
 ./test/cleanup-kind.sh

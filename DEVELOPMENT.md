@@ -21,7 +21,7 @@ cd train-k8s-container
 bundle install
 
 # Run unit tests (no Kubernetes required)
-bundle exec rspec spec/train-k8s-container
+bundle exec rspec
 
 # Run linting
 bundle exec rake style
@@ -53,11 +53,11 @@ train-k8s-container/
 
 ### Unit Tests
 
-Unit tests mock all external dependencies and run quickly:
+The default RSpec command excludes integration tests. Unit tests mock external dependencies:
 
 ```bash
 # Run all unit tests
-bundle exec rspec spec/train-k8s-container
+bundle exec rspec
 
 # Run specific test file
 bundle exec rspec spec/train-k8s-container/connection_spec.rb
@@ -78,7 +78,7 @@ Integration tests require a real Kubernetes cluster:
 ./test/setup-kind.sh
 
 # Run integration tests
-bundle exec rspec spec/integration
+bundle exec rspec spec/integration --tag type:integration
 
 # Cleanup when done
 ./test/cleanup-kind.sh
@@ -87,8 +87,9 @@ bundle exec rspec spec/integration
 ### Full Test Suite
 
 ```bash
-# Run all tests (unit + integration)
+# Run unit and integration suites
 bundle exec rspec
+bundle exec rspec spec/integration --tag type:integration
 
 # With coverage report
 bundle exec rspec

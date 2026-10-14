@@ -183,7 +183,7 @@ See [DEVELOPMENT.md](DEVELOPMENT.md) for local development setup and testing.
 bundle install
 
 # Run unit tests
-bundle exec rspec spec/train-k8s-container
+bundle exec rspec
 
 # Run linting
 bundle exec rake style
@@ -192,7 +192,7 @@ bundle exec rake style
 ./test/setup-kind.sh
 
 # Run integration tests
-bundle exec rspec spec/integration
+bundle exec rspec spec/integration --tag type:integration
 ```
 
 ## Contributing
