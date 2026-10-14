@@ -153,27 +153,26 @@ jobs:
           install-plugin: train-k8s-container-*.gem
 
       - name: Test with Cinc Auditor detect
-        run: cinc-auditor detect -t k8s-container:///test-ubuntu/test-ubuntu
+        run: |
+          cinc-auditor detect -t k8s-container:///test-ubuntu/test-ubuntu
+          cinc-auditor detect -t k8s-container:///test-alpine/test-alpine
 
       - name: Test with Cinc Auditor shell
         run: |
           cinc-auditor shell -t k8s-container:///test-ubuntu/test-ubuntu --command "command('whoami').stdout"
           cinc-auditor shell -t k8s-container:///test-alpine/test-alpine --command "command('cat /etc/alpine-release').stdout"
 
-      - name: Test distroless container detection
+      - name: Test distroless detection and shell error
         run: |
-          echo "Testing distroless container (no shell)..."
-          # Distroless containers have no shell, so detect should still work
-          # but will report limited capabilities
-          cinc-auditor detect -t k8s-container:///test-distroless/test-distroless || echo "Expected: distroless detection may have limited results"
-
-          # Test that we get appropriate error for complex commands on distroless
-          echo "Testing error handling for complex commands on distroless..."
-          if cinc-auditor shell -t k8s-container:///test-distroless/test-distroless --command "command('whoami').stdout" 2>&1; then
-            echo "Note: Simple command may work if binary exists"
-          else
-            echo "Expected: distroless container may not support shell commands"
-          fi
+          echo "Testing distroless platform detection..."
+          cinc-auditor detect -t k8s-container:///test-distroless/test-distroless
+          echo "Expecting a shell-unavailable error..."
+          exit_code=0
+          output=$(cinc-auditor shell -t k8s-container:///test-distroless/test-distroless \
+            --command "command('true && true').stdout" 2>&1) || exit_code=$?
+          printf '%s\n' "$output"
+          test "$exit_code" -ne 0
+          grep -Fq 'Container has no shell - cannot execute complex command with operators: true && true' <<< "$output"
 
       - name: Collect diagnostics on failure
         if: failure()
