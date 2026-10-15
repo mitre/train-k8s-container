@@ -23,9 +23,6 @@ concurrency:
 permissions:
   contents: read
 
-env:
-  BUNDLE_WITH: audit
-
 jobs:
   # Job 1: Secret Scanning with TruffleHog
   secret_scanning:
@@ -82,6 +79,8 @@ jobs:
   # Job 3: SBOM Generation
   sbom:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout code
@@ -94,16 +93,29 @@ jobs:
         with:
           bundler-cache: true
 
-      - name: Generate SBOM (JSON)
-        run: |
-          bundle exec cyclonedx-ruby -p . -o sbom.json
-          echo "✅ Generated CycloneDX SBOM in JSON format"
+      - name: Inventory Ruby dependencies
+        uses: anchore/sbom-action@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
+        with:
+          format: syft-json
+          output-file: ${{ runner.temp }}/syft.json
+          dependency-snapshot: ${{ github.event_name == 'push' }}
+          upload-artifact: false
 
-      - name: Upload SBOM artifacts
+      - name: Identify vulnerabilities
+        uses: anchore/scan-action@27805bf3b4e84b4a5c980df22ed233c00390a439 # v7.4.2
+        with:
+          sbom: ${{ runner.temp }}/syft.json
+          output-format: cyclonedx-json
+          output-file: ${{ runner.temp }}/sbom.cdx.json
+          fail-build: false
+          cache-db: true
+
+      - name: Upload CycloneDX SBOM with vulnerability findings
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: sbom-${{ github.sha }}
-          path: sbom.json
+          path: ${{ runner.temp }}/sbom.cdx.json
+          if-no-files-found: error
           retention-days: 90
 
       - name: SBOM generation summary
@@ -116,7 +128,7 @@ jobs:
             echo ""
             echo "### SBOM Contents Preview"
             echo '```json'
-            head -n 20 sbom.json
+            head -n 20 "$RUNNER_TEMP/sbom.cdx.json"
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 

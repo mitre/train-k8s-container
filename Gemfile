@@ -21,7 +21,3 @@ group :test do
   gem 'pry'
   gem 'simplecov', require: false
 end
-
-group :audit, optional: true do
-  gem 'cyclonedx-ruby', '~> 1.1', require: false
-end
