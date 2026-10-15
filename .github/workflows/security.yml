@@ -130,40 +130,10 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
-  # Job 4: License Compliance Audit
-  license_audit:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - name: Set up Ruby
-        uses: $/.github/actions/setup-ruby
-        with:
-          bundler-cache: true
-
-      - name: Run license audit
-        run: |
-          bundle exec license_finder report --format text || echo "::warning::License issues found"
-        continue-on-error: true  # First run may need decisions file
-
-      - name: License audit summary
-        if: always()
-        run: |
-          {
-            echo "## ⚖️ License Compliance Audit"
-            echo "Analyzed licenses of all gem dependencies"
-            echo "✅ License audit completed - review for compliance"
-          } >> "$GITHUB_STEP_SUMMARY"
-
-  # Job 5: Security Summary
   security_summary:
     runs-on: ubuntu-latest
     permissions: {}
-    needs: [secret_scanning, dependency_vulnerabilities, sbom, license_audit]
+    needs: [secret_scanning, dependency_vulnerabilities, sbom]
     if: always()
 
     steps:
@@ -180,7 +150,6 @@ jobs:
             echo "- 🔒 Secret Scanning: Completed"
             echo "- 🛡️ Vulnerability Scan: Completed"
             echo "- 📦 SBOM Generation: Completed"
-            echo "- ⚖️ License Audit: Completed"
             echo ""
             echo "ℹ️ This workflow provides security notifications and does not block builds."
             echo "Review individual job logs for detailed findings."

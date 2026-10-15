@@ -24,5 +24,4 @@ end
 
 group :audit, optional: true do
   gem 'cyclonedx-ruby', '~> 1.1', require: false
-  gem 'license_finder', '~> 7.2', require: false
 end
