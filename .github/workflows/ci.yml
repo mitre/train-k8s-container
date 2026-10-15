@@ -332,36 +332,8 @@ jobs:
           # Wait for multi-container pod
           kubectl wait --for=condition=Ready pod/multi-container-pod --timeout=120s
 
-          # Verify both containers are operational
-          max_attempts=30
-          for container in scanner target; do
-            attempt=1
-            while [ $attempt -le $max_attempts ]; do
-              if kubectl exec multi-container-pod -c "$container" -- echo "ready" 2>/dev/null | grep -q "ready"; then
-                echo "✅ multi-container-pod/$container is ready"
-                break
-              fi
-              echo "Waiting for multi-container-pod/$container... ($attempt/$max_attempts)"
-              sleep 2
-              attempt=$((attempt + 1))
-            done
-          done
-
-      - name: Verify scanner pod is operational
+      - name: Verify Cinc Auditor installation
         run: |
-          # Verify scanner pod can run commands
-          max_attempts=30
-          attempt=1
-          while [ $attempt -le $max_attempts ]; do
-            if kubectl exec cinc-scanner -- echo "ready" 2>/dev/null | grep -q "ready"; then
-              echo "✅ Scanner pod is ready"
-              break
-            fi
-            echo "Waiting for scanner pod... ($attempt/$max_attempts)"
-            sleep 2
-            attempt=$((attempt + 1))
-          done
-
           # Verify Cinc Auditor is installed
           kubectl exec cinc-scanner -- cinc-auditor version
           kubectl exec cinc-scanner -- cinc-auditor plugin list

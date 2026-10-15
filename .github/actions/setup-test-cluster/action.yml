@@ -95,62 +95,14 @@ runs:
       env:
         CREATE_UBUNTU: ${{ inputs.create-ubuntu }}
         CREATE_ALPINE: ${{ inputs.create-alpine }}
-        CREATE_DISTROLESS: ${{ inputs.create-distroless }}
       run: |
-        # Function to verify a pod with shell is truly ready
-        verify_pod_ready() {
-          local pod=$1
-          local max_attempts=30
-          local attempt=1
-
-          echo "Verifying $pod is fully operational..."
-          while [ $attempt -le $max_attempts ]; do
-            if kubectl exec "$pod" -- echo "ready" 2>/dev/null | grep -q "ready"; then
-              echo "✅ $pod is ready (attempt $attempt)"
-              return 0
-            fi
-            echo "  Waiting for $pod... (attempt $attempt/$max_attempts)"
-            sleep 2
-            attempt=$((attempt + 1))
-          done
-          echo "❌ $pod failed to become ready"
-          return 1
-        }
-
-        # Function to verify distroless pod is running
-        verify_distroless_ready() {
-          local pod=$1
-          local max_attempts=30
-          local attempt=1
-
-          echo "Verifying distroless $pod is running..."
-          while [ $attempt -le $max_attempts ]; do
-            status=$(kubectl get pod "$pod" -o jsonpath='{.status.phase}' 2>/dev/null)
-            if [ "$status" = "Running" ]; then
-              echo "✅ $pod is running (distroless - no shell) (attempt $attempt)"
-              return 0
-            fi
-            echo "  Waiting for $pod... status=$status (attempt $attempt/$max_attempts)"
-            sleep 2
-            attempt=$((attempt + 1))
-          done
-          echo "❌ $pod failed to start"
-          return 1
-        }
-
         # Verify pods based on what was created
         if [ "$CREATE_UBUNTU" = "true" ]; then
-          verify_pod_ready test-ubuntu
           kubectl exec test-ubuntu -- /bin/bash -c "echo 'bash works'"
         fi
 
         if [ "$CREATE_ALPINE" = "true" ]; then
-          verify_pod_ready test-alpine
           kubectl exec test-alpine -- /bin/sh -c "echo 'sh works'"
-        fi
-
-        if [ "$CREATE_DISTROLESS" = "true" ]; then
-          verify_distroless_ready test-distroless
         fi
 
         echo "✅ All requested test pods are operational"
