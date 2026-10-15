@@ -416,10 +416,6 @@ jobs:
               [[ "$status" == 100 || "$status" == 101 ]] || exit "$status"
             }
 
-          # Show summary of results
-          echo "STIG scan completed. Results summary:"
-          kubectl exec cinc-scanner -- cat /work/stig-results.json | head -100 || true
-
       - name: Test same-pod container-to-container scanning
         run: |
           # This tests scanning a sibling container within the same pod
