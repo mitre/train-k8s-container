@@ -28,8 +28,7 @@ env:
 
 jobs:
   # Job 1: Secret Scanning with TruffleHog
-  secret-scanning:
-    name: Secret Scanning
+  secret_scanning:
     runs-on: ubuntu-latest
 
     steps:
@@ -58,8 +57,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   # Job 2: Dependency Vulnerability Scanning
-  vulnerability-scanning:
-    name: Dependency Vulnerabilities
+  dependency_vulnerabilities:
     runs-on: ubuntu-latest
 
     steps:
@@ -92,8 +90,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   # Job 3: SBOM Generation
-  sbom-generation:
-    name: Generate SBOM
+  sbom:
     runs-on: ubuntu-latest
 
     steps:
@@ -134,8 +131,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   # Job 4: License Compliance Audit
-  license-audit:
-    name: License Compliance
+  license_audit:
     runs-on: ubuntu-latest
 
     steps:
@@ -164,11 +160,10 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   # Job 5: Security Summary
-  security-summary:
-    name: Security Summary
+  security_summary:
     runs-on: ubuntu-latest
     permissions: {}
-    needs: [secret-scanning, vulnerability-scanning, sbom-generation, license-audit]
+    needs: [secret_scanning, dependency_vulnerabilities, sbom, license_audit]
     if: always()
 
     steps:
