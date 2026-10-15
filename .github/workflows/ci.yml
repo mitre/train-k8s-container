@@ -446,6 +446,9 @@ jobs:
             kubectl cp "cinc-scanner:/work/$report.json" "$RUNNER_TEMP/pod-results/$report.json" || true
           done
 
+      - name: Validate STIG results
+        run: jq -e 'all(.profiles[].controls[].results[]; .exception == null)' "$RUNNER_TEMP/pod-results/stig-results.json"
+
       - name: Upload pod test results
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
