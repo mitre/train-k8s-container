@@ -1,0 +1,12 @@
+name: Build gem
+description: Set up Ruby and build the plugin gem
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Ruby
+      uses: $/.github/actions/setup-ruby
+
+    - name: Build gem
+      shell: bash
+      run: gem build train-k8s-container.gemspec

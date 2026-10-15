@@ -26,13 +26,13 @@ runs:
       shell: bash
       run: |
         echo "Installing Cinc Auditor (open-source, license-free InSpec distribution)..."
-        curl -L https://omnitruck.cinc.sh/install.sh | sudo bash -s -- -P cinc-auditor
+        curl -fL --proto '=https' --proto-redir '=https' https://omnitruck.cinc.sh/install.sh | sudo bash -s -- -P cinc-auditor
         cinc-auditor version
 
     - name: Install SAF CLI
       if: inputs.install-saf-cli == 'true'
       shell: bash
-      run: |
+      run: | # zizmor: ignore[adhoc-packages] -- External test CLI; no Node manifest.
         echo "Installing SAF CLI..."
         npm install -g @mitre/saf
         saf --version
@@ -40,15 +40,21 @@ runs:
     - name: Install plugin from RubyGems
       if: inputs.plugin-version != ''
       shell: bash
+      env:
+        PLUGIN_NAME: ${{ inputs.plugin-name }}
+        PLUGIN_VERSION: ${{ inputs.plugin-version }}
       run: |
-        echo "Installing ${{ inputs.plugin-name }} v${{ inputs.plugin-version }} from RubyGems..."
-        cinc-auditor plugin install ${{ inputs.plugin-name }} -v ${{ inputs.plugin-version }}
+        echo "Installing $PLUGIN_NAME v$PLUGIN_VERSION from RubyGems..."
+        cinc-auditor plugin install "$PLUGIN_NAME" -v "$PLUGIN_VERSION"
         cinc-auditor plugin list
 
     - name: Install plugin from gem file
       if: inputs.install-plugin != ''
       shell: bash
+      env:
+        PLUGIN_GEM: ${{ inputs.install-plugin }}
       run: |
-        echo "Installing plugin from ${{ inputs.install-plugin }}..."
-        cinc-auditor plugin install ${{ inputs.install-plugin }}
+        echo "Installing plugin from $PLUGIN_GEM..."
+        mapfile -t gems < <(compgen -G "$PLUGIN_GEM")
+        cinc-auditor plugin install "${gems[0]}"
         cinc-auditor plugin list

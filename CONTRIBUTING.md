@@ -113,13 +113,14 @@ See [DEVELOPMENT.md](DEVELOPMENT.md) for detailed local development and testing 
 
 ```bash
 # Unit tests only (fast, no kubectl required)
-bundle exec rspec spec/train-k8s-container
+bundle exec rspec
 
 # Integration tests (requires kind cluster)
-bundle exec rspec spec/integration
+bundle exec rspec spec/integration --tag type:integration
 
 # All tests
 bundle exec rspec
+bundle exec rspec spec/integration --tag type:integration
 
 # With coverage report
 bundle exec rspec
@@ -238,7 +239,7 @@ Releases are **fully automated** using [release-please](https://github.com/googl
    - Shows the proposed version change
 
 2. **Auto-Merge When CI Passes**: The Release PR automatically merges once all CI checks pass:
-   - Unit tests (Ruby 3.1, 3.2, 3.3)
+   - Unit tests (Ruby 3.3, 3.4, 4.0)
    - Integration tests (Kubernetes 1.29, 1.30, 1.31)
    - Security audit
    - Branch protection enforces all checks must pass
