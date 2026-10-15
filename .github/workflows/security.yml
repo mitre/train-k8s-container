@@ -24,7 +24,6 @@ permissions:
   contents: read
 
 jobs:
-  # Job 1: Secret Scanning with TruffleHog
   secret_scanning:
     runs-on: ubuntu-latest
 
@@ -40,16 +39,6 @@ jobs:
         with:
           path: ./
 
-      - name: Secret scan summary
-        if: always()
-        run: |
-          {
-            echo "## 🔒 Secret Scanning Results"
-            echo "Scanned for 800+ types of secrets and credentials"
-            echo "✅ Secret scan completed - check logs for details"
-          } >> "$GITHUB_STEP_SUMMARY"
-
-  # Job 2: Dependency Vulnerability Scanning
   dependency_vulnerabilities:
     runs-on: ubuntu-latest
 
@@ -67,16 +56,6 @@ jobs:
       - name: Run vulnerability scan
         run: bundle exec bundler-audit check --update --verbose
 
-      - name: Vulnerability scan summary
-        if: always()
-        run: |
-          {
-            echo "## 🛡️ Dependency Vulnerability Scan"
-            echo "Checked Gemfile.lock against Ruby Advisory Database"
-            echo "✅ Scan completed - review logs for any vulnerabilities"
-          } >> "$GITHUB_STEP_SUMMARY"
-
-  # Job 3: SBOM Generation
   sbom:
     runs-on: ubuntu-latest
     permissions:
@@ -118,20 +97,6 @@ jobs:
           if-no-files-found: error
           retention-days: 90
 
-      - name: SBOM generation summary
-        if: always()
-        run: |
-          {
-            echo "## 📦 Software Bill of Materials (SBOM)"
-            echo "Generated CycloneDX SBOM in JSON format"
-            echo "✅ SBOM artifact uploaded for 90-day retention"
-            echo ""
-            echo "### SBOM Contents Preview"
-            echo '```json'
-            head -n 20 "$RUNNER_TEMP/sbom.cdx.json"
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
-
   security_summary:
     runs-on: ubuntu-latest
     permissions: {}
@@ -139,20 +104,7 @@ jobs:
     if: always()
 
     steps:
-      - name: Generate security summary
+      - name: Require security checks to pass
         env:
-          COMMIT_SHA: ${{ github.sha }}
-        run: |
-          {
-            echo "# 🔐 Security Audit Summary"
-            echo ""
-            echo "All security checks completed for commit $COMMIT_SHA"
-            echo ""
-            echo "## Scan Results"
-            echo "- 🔒 Secret Scanning: Completed"
-            echo "- 🛡️ Vulnerability Scan: Completed"
-            echo "- 📦 SBOM Generation: Completed"
-            echo ""
-            echo "ℹ️ This workflow provides security notifications and does not block builds."
-            echo "Review individual job logs for detailed findings."
-          } >> "$GITHUB_STEP_SUMMARY"
+          RESULTS: ${{ toJSON(needs) }}
+        run: jq -e 'all(.[]; .result == "success")' <<< "$RESULTS"
