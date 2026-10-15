@@ -114,6 +114,32 @@ RSpec.describe TrainPlugins::K8sContainer::Connection do
     end
   end
 
+  context 'when shell detection is shared across operations' do
+    let(:stdout) { 'root' }
+    let(:kube_client) { TrainPlugins::K8sContainer::KubectlExecClient.new(**options, logger: @null_logger, use_pty: false) }
+
+    before do
+      Train::Platforms.__reset
+      mock_unix_container_with_bash(kube_client)
+      allow(kube_client).to receive(:execute).and_call_original
+      allow(kube_client).to receive(:run_shellout).and_return(shell_op)
+    end
+
+    after do
+      Train::Platforms.__reset
+    end
+
+    it 'does not repeat shell probes for platform fallback and file handling' do
+      expect(subject.run_command('whoami').stdout).to eq('root')
+      expect(subject.send(:fallback_platform).linux?).to be true
+      expect(subject.file('/etc/passwd')).to be_a(Train::File::Remote::Linux)
+
+      expect(kube_client).to have_received(:execute_raw).with('echo test').once
+      expect(kube_client).to have_received(:execute_raw).with('cat /etc/os-release 2>/dev/null').once
+      expect(kube_client).to have_received(:execute_raw).with('test -x /bin/bash && echo OK').once
+    end
+  end
+
   describe '#file' do
     context 'path validation' do
       it 'rejects nil path' do
@@ -133,8 +159,7 @@ RSpec.describe TrainPlugins::K8sContainer::Connection do
       end
       let(:stdout) { proc_version }
       before do
-        # Mock shell detection for file handler selection
-        mock_unix_container_with_bash(kube_client)
+        allow(kube_client).to receive(:container_os).and_return(:unix)
         allow(kube_client).to receive(:execute).with('cat /proc/version || echo -n').and_return(shell_op)
       end
 
@@ -150,12 +175,22 @@ RSpec.describe TrainPlugins::K8sContainer::Connection do
 
     context 'on Windows containers' do
       before do
-        mock_windows_container_with_cmd(kube_client)
+        allow(kube_client).to receive(:container_os).and_return(:windows)
       end
 
       it 'uses Train::File::Remote::Windows for Windows containers' do
         file = subject.file('C:\\Windows\\System32\\config.ini')
         expect(file).to be_a(Train::File::Remote::Windows)
+      end
+    end
+
+    context 'when the container OS is unknown' do
+      before do
+        allow(kube_client).to receive(:container_os).and_return(:unknown)
+      end
+
+      it 'uses Train::File::Remote::Linux' do
+        expect(subject.file('/etc/passwd')).to be_a(Train::File::Remote::Linux)
       end
     end
   end
