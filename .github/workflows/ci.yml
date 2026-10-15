@@ -519,7 +519,10 @@ jobs:
           echo "Running regression tests with original gem..."
           cinc-auditor exec "$PROFILE_PATH" \
             -t k8s-container:///test-ubuntu/test-ubuntu \
-            --reporter cli json:baseline-results.json || true
+            --reporter cli json:baseline-results.json || {
+              status=$?
+              [[ "$status" == 100 || "$status" == 101 ]] || exit "$status"
+            }
 
           echo "Baseline test completed."
 
@@ -543,86 +546,34 @@ jobs:
           echo "Running regression tests with MITRE fork..."
           cinc-auditor exec "$PROFILE_PATH" \
             -t k8s-container:///test-ubuntu/test-ubuntu \
-            --reporter cli json:current-results.json || true
+            --reporter cli json:current-results.json || {
+              status=$?
+              [[ "$status" == 100 || "$status" == 101 ]] || exit "$status"
+            }
 
           echo "Current test completed."
 
-      # ============================================
-      # COMPARE: Analyze differences
-      # ============================================
-      - name: Compare results with SAF CLI
+      - name: Compare results
         run: |
-          # Suppress node warnings from SAF CLI eMASS module loading issues
-          export NODE_NO_WARNINGS=1
+          echo "Checking overall results against the original plugin's thresholds..."
+          saf generate threshold --input baseline-results.json --output "$RUNNER_TEMP/baseline-threshold.yml"
+          saf validate threshold --input current-results.json --templateFile "$RUNNER_TEMP/baseline-threshold.yml"
 
-          echo "=========================================="
-          echo "BASELINE SUMMARY (inspec/train-k8s-container)"
-          echo "=========================================="
-          saf summary --input baseline-results.json 2>/dev/null || true
-
-          echo ""
-          echo "=========================================="
-          echo "CURRENT SUMMARY (MITRE fork)"
-          echo "=========================================="
-          saf summary --input current-results.json 2>/dev/null || true
-
-          echo ""
-          echo "=========================================="
-          echo "COMPARISON"
-          echo "=========================================="
-
-          # Extract pass/fail counts for comparison
-          baseline_passed=$(jq '[.profiles[].controls[].results[] | select(.status == "passed")] | length' baseline-results.json)
-          baseline_failed=$(jq '[.profiles[].controls[].results[] | select(.status == "failed")] | length' baseline-results.json)
-          baseline_skipped=$(jq '[.profiles[].controls[].results[] | select(.status == "skipped")] | length' baseline-results.json)
-
-          current_passed=$(jq '[.profiles[].controls[].results[] | select(.status == "passed")] | length' current-results.json)
-          current_failed=$(jq '[.profiles[].controls[].results[] | select(.status == "failed")] | length' current-results.json)
-          current_skipped=$(jq '[.profiles[].controls[].results[] | select(.status == "skipped")] | length' current-results.json)
-
-          echo "Baseline (inspec): Passed=$baseline_passed, Failed=$baseline_failed, Skipped=$baseline_skipped"
-          echo "Current (MITRE):   Passed=$current_passed, Failed=$current_failed, Skipped=$current_skipped"
-
-          # Check for regressions (more failures in current than baseline)
-          if [ "$current_failed" -gt "$baseline_failed" ]; then
-            echo ""
-            echo "WARNING: MITRE fork has MORE failures than baseline!"
-            echo "   Baseline failures: $baseline_failed"
-            echo "   Current failures:  $current_failed"
-            echo ""
-            echo "This may indicate a regression. Please review the detailed results."
-
-            # Show which controls differ
-            echo ""
-            echo "Controls with different results:"
-            jq -r '.profiles[].controls[] | select(.results[].status == "failed") | .id' current-results.json | sort > current-failed.txt
-            jq -r '.profiles[].controls[] | select(.results[].status == "failed") | .id' baseline-results.json | sort > baseline-failed.txt
-            echo "New failures in MITRE fork:"
-            comm -23 current-failed.txt baseline-failed.txt || echo "  (none)"
-
-            exit 1
-          fi
-
-          # Check for improvements (fewer failures)
-          if [ "$current_failed" -lt "$baseline_failed" ]; then
-            echo ""
-            echo "IMPROVEMENT: MITRE fork has FEWER failures than baseline!"
-            echo "   Baseline failures: $baseline_failed"
-            echo "   Current failures:  $current_failed"
-          fi
-
-          # Check if results are equivalent
-          if [ "$current_passed" -eq "$baseline_passed" ] && [ "$current_failed" -eq "$baseline_failed" ]; then
-            echo ""
-            echo "EQUIVALENT: Results match between baseline and MITRE fork"
-          fi
-
-          echo ""
-          echo "Regression comparison completed successfully."
+          echo "Checking for new failing or errored control IDs..."
+          jq -en --slurpfile baseline baseline-results.json --slurpfile current current-results.json '
+            def failures:
+              [.profiles[].controls[] | select(any(.results[]; .status == "failed" or .status == "error")) | .id];
+            (($current[0] | failures) - ($baseline[0] | failures)) as $new
+            | if $new == [] then true else error("New failing controls: " + ($new | join(", "))) end
+          '
+          echo "=== Baseline summary ==="
+          saf summary --input baseline-results.json 2>/dev/null
+          echo "=== Current summary ==="
+          saf summary --input current-results.json 2>/dev/null
 
       - name: Upload test results
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        if: always()
+        if: ${{ !cancelled() }}
         with:
           name: regression-results
           path: |
