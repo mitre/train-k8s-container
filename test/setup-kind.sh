@@ -43,14 +43,14 @@ if kind get clusters 2>/dev/null | grep -q "^${CLUSTER_NAME}$"; then
                 echo "⚠️  Test pods are not running (Ubuntu: $UBUNTU_STATUS, Alpine: $ALPINE_STATUS)"
                 echo "Recreating test pods..."
                 kubectl delete pod test-ubuntu test-alpine --ignore-not-found=true
-                kubectl run test-ubuntu --image=ubuntu:22.04 --restart=Never -- sleep infinity
+                kubectl run test-ubuntu --image=ubuntu:24.04 --restart=Never -- sleep infinity
                 kubectl run test-alpine --image=alpine:3.18 --restart=Never -- sleep infinity
                 kubectl wait --for=condition=Ready pod/test-ubuntu --timeout=120s
                 kubectl wait --for=condition=Ready pod/test-alpine --timeout=120s
             fi
         else
             echo "Creating test pods..."
-            kubectl run test-ubuntu --image=ubuntu:22.04 --restart=Never -- sleep infinity
+            kubectl run test-ubuntu --image=ubuntu:24.04 --restart=Never -- sleep infinity
             kubectl run test-alpine --image=alpine:3.18 --restart=Never -- sleep infinity
             kubectl wait --for=condition=Ready pod/test-ubuntu --timeout=120s
             kubectl wait --for=condition=Ready pod/test-alpine --timeout=120s
@@ -81,7 +81,7 @@ kubectl get nodes
 # Create test pods (same as CI)
 echo
 echo "Creating test pods..."
-kubectl run test-ubuntu --image=ubuntu:22.04 --restart=Never -- sleep 3600
+kubectl run test-ubuntu --image=ubuntu:24.04 --restart=Never -- sleep 3600
 kubectl run test-alpine --image=alpine:3.18 --restart=Never -- sleep 3600
 
 # Wait for pods to be ready
@@ -99,7 +99,7 @@ echo
 echo "=== Setup Complete! ==="
 echo
 echo "Test pods running:"
-echo "  - test-ubuntu (Ubuntu 22.04 with bash)"
+echo "  - test-ubuntu (Ubuntu 24.04 with bash)"
 echo "  - test-alpine (Alpine 3.18 with ash/sh)"
 echo
 echo "Run integration tests:"

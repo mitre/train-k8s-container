@@ -80,7 +80,7 @@ cinc-auditor shell -t k8s-container:///my-pod/my-container
 cinc-auditor exec my-profile -t k8s-container://prod/app-pod/app
 
 # Run STIG baseline
-cinc-auditor exec https://github.com/mitre/canonical-ubuntu-22.04-lts-stig-baseline \
+cinc-auditor exec https://github.com/mitre/canonical-ubuntu-24.04-lts-stig-baseline \
   -t k8s-container:///target-pod/target-container
 ```
 
@@ -91,7 +91,7 @@ $ cinc-auditor detect -t k8s-container:///test-ubuntu/test-ubuntu
 
 Name:      ubuntu
 Families:  debian, linux, unix, os, kubernetes, container
-Release:   22.04
+Release:   24.04
 Arch:      aarch64
 ```
 

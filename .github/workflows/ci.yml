@@ -325,7 +325,7 @@ jobs:
               imagePullPolicy: Never
               command: ["sleep", "infinity"]
             - name: target
-              image: ubuntu:22.04
+              image: ubuntu:24.04
               command: ["sleep", "infinity"]
           EOF
 
@@ -405,11 +405,9 @@ jobs:
 
       - name: Test with real STIG profile
         run: |
-          # Run a real STIG profile to prove the plugin works with actual compliance content
-          # Using the Container-test branch which is optimized for container scanning
-          echo "Running canonical Ubuntu 22.04 STIG baseline against test-ubuntu..."
+          echo "Running canonical Ubuntu 24.04 STIG baseline against test-ubuntu..."
           kubectl exec cinc-scanner -- cinc-auditor exec \
-            https://github.com/mitre/canonical-ubuntu-22.04-lts-stig-baseline/archive/refs/heads/Container-test.tar.gz \
+            https://github.com/mitre/canonical-ubuntu-24.04-lts-stig-baseline/archive/refs/heads/main.tar.gz \
             -t k8s-container:///test-ubuntu/test-ubuntu \
             --reporter cli json:/work/stig-results.json || {
               status=$?

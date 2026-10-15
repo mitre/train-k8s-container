@@ -7,7 +7,7 @@ echo "Creating test pods in default namespace..."
 
 # Ubuntu pod (has bash)
 kubectl run test-ubuntu \
-  --image=ubuntu:22.04 \
+  --image=ubuntu:24.04 \
   --command -- sleep 3600 \
   --restart=Never 2>/dev/null || echo "test-ubuntu already exists"
 

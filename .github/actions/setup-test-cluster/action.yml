@@ -62,7 +62,7 @@ runs:
         # Ubuntu pod
         if [ "$CREATE_UBUNTU" = "true" ]; then
           echo "Creating Ubuntu test pod..."
-          kubectl run test-ubuntu --image=ubuntu:22.04 --restart=Never -- sleep infinity
+          kubectl run test-ubuntu --image=ubuntu:24.04 --restart=Never -- sleep infinity
         fi
 
         # Alpine pod
