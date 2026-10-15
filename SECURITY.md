@@ -67,11 +67,13 @@ This project implements comprehensive automated security scanning:
 - **Tool**: TruffleHog OSS
 - **Frequency**: Every push, pull request, and weekly
 - **Coverage**: 800+ secret types (API keys, tokens, credentials)
+- **Enforcement**: Secret findings fail CI
 
 ### Vulnerability Scanning
 - **Tool**: bundler-audit
 - **Frequency**: Every push, pull request, and weekly
 - **Database**: Ruby Advisory Database (continuously updated)
+- **Enforcement**: Known vulnerabilities fail CI, including development dependencies
 
 ### Software Bill of Materials (SBOM)
 - **Tool**: CycloneDX Ruby
