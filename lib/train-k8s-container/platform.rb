@@ -63,13 +63,15 @@ module TrainPlugins
         # Create a minimal platform with appropriate families
         plat = Train::Platforms.name('unknown')
 
-        case kubectl_client.container_os
-        when :unix
-          plat.in_family('unix')
-          plat.in_family('linux')
-        when :windows
-          plat.in_family('windows')
-        end
+        families = case kubectl_client.container_os
+                   when :unix
+                     %w[unix linux]
+                   when :windows
+                     ['windows']
+                   else
+                     []
+                   end
+        families.each { |family| plat.in_family(family) }
 
         force_platform!('unknown', release: 'unknown')
       end
