@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require_relative 'shell_detector'
-
 module TrainPlugins
   module K8sContainer
     # Platform detection module for k8s-container transport
@@ -62,31 +60,20 @@ module TrainPlugins
 
       # Fallback platform when Train's detection fails (distroless, minimal containers)
       def fallback_platform
-        detect_shell # Trigger shell detection
-        container_os = @shell_detector&.container_os || :unknown
-
         # Create a minimal platform with appropriate families
         plat = Train::Platforms.name('unknown')
 
-        case container_os
-        when :unix
-          plat.in_family('unix')
-          plat.in_family('linux')
-        when :windows
-          plat.in_family('windows')
-        end
+        families = case kubectl_client.container_os
+                   when :unix
+                     %w[unix linux]
+                   when :windows
+                     ['windows']
+                   else
+                     []
+                   end
+        families.each { |family| plat.in_family(family) }
 
         force_platform!('unknown', release: 'unknown')
-      end
-
-      def detect_shell
-        return unless is_a?(Train::Plugins::Transport::BaseConnection)
-
-        client = send(:kubectl_client)
-        @shell_detector ||= ShellDetector.new(client)
-        @shell_detector.detect
-      rescue NoMethodError
-        nil
       end
     end
   end

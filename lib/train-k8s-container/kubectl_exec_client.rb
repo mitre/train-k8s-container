@@ -71,6 +71,12 @@ module TrainPlugins
         "#{@namespace}/#{@pod}/#{@container_name}"
       end
 
+      # Share cached OS detection with platform and file handling.
+      def container_os
+        detect_shell
+        @shell_detector.container_os
+      end
+
       private
 
       def pty_available?
