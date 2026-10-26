@@ -133,6 +133,55 @@ RSpec.describe TrainPlugins::K8sContainer::KubectlExecClient do
     end
   end
 
+  describe '#container_os' do
+    context 'with a Unix shell' do
+      before do
+        mock_unix_container_with_bash(client)
+      end
+
+      it 'detects the OS lazily and caches the result' do
+        expect(client.container_os).to eq(:unix)
+        expect(client.container_os).to eq(:unix)
+        expect(client).to have_received(:execute_raw).with('echo test').once
+      end
+    end
+
+    context 'with a Windows shell' do
+      before do
+        mock_windows_container_with_cmd(client)
+      end
+
+      it 'returns windows' do
+        expect(client.container_os).to eq(:windows)
+      end
+    end
+
+    context 'without a shell' do
+      before do
+        mock_distroless_container(client)
+      end
+
+      it 'reuses OS detection even when the cached shell is nil' do
+        expect(client.send(:detect_shell)).to be_nil
+        expect(client.container_os).to eq(:unix)
+        expect(client.container_os).to eq(:unix)
+        expect(client).to have_received(:execute_raw).with('echo test').once
+      end
+    end
+
+    context 'when OS detection fails' do
+      before do
+        mock_shell_detection_error(client)
+      end
+
+      it 'caches unknown without repeating the probes' do
+        expect(client.container_os).to eq(:unknown)
+        expect(client.container_os).to eq(:unknown)
+        expect(client).to have_received(:execute_raw).with('echo test').once
+      end
+    end
+  end
+
   describe 'PTY mode selection' do
     describe '#pty_available?' do
       it 'returns true on Unix platforms' do

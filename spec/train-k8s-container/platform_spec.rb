@@ -4,7 +4,7 @@ require_relative '../spec_helper'
 require 'train'
 require 'train-k8s-container/platform'
 require 'train-k8s-container/version'
-require 'train-k8s-container/shell_detector'
+require 'train-k8s-container/kubectl_exec_client'
 
 # Test connection class that includes Platform module with mocked command execution
 # Train's Detect.scan runs commands through run_command which calls run_command_via_connection
@@ -13,12 +13,15 @@ class TestPlatformConnection < Train::Plugins::Transport::BaseConnection
 
   attr_accessor :command_results
 
-  def initialize
+  def initialize(kubectl_client)
     super({})
+    @kubectl_client = kubectl_client
     @command_results = {}
   end
 
   private
+
+  attr_reader :kubectl_client
 
   # This is called by Train's run_command method during platform detection
   # Train's detection runs many commands like 'uname -s', 'test -f /etc/os-release && cat /etc/os-release', etc.
@@ -32,7 +35,8 @@ class TestPlatformConnection < Train::Plugins::Transport::BaseConnection
 end
 
 RSpec.describe TrainPlugins::K8sContainer::Platform do
-  subject { TestPlatformConnection.new }
+  let(:kubectl_client) { instance_double(TrainPlugins::K8sContainer::KubectlExecClient, container_os: :unknown) }
+  subject { TestPlatformConnection.new(kubectl_client) }
 
   # Helper to mock command results for Ubuntu detection
   # Train's detection sequence for Debian/Ubuntu:
