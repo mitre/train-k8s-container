@@ -99,7 +99,7 @@ RSpec.describe TrainPlugins::K8sContainer::ResultProcessor do
       end.to raise_error(TrainPlugins::K8sContainer::RetryHandler::ConnectionError)
     end
 
-    it 'detects a missing container and identifies its pod' do
+    it 'detects a missing container and preserves kubectl stderr' do
       result = double('result',
                       exit_status: 1,
                       stdout: '',
@@ -107,7 +107,7 @@ RSpec.describe TrainPlugins::K8sContainer::ResultProcessor do
 
       expect do
         described_class.validate(result, 'whoami', logger)
-      end.to raise_error(TrainPlugins::K8sContainer::RetryHandler::ConnectionError, 'Container missing not found in pod test-pod.')
+      end.to raise_error(TrainPlugins::K8sContainer::RetryHandler::ConnectionError, result.stderr)
     end
 
     it 'preserves ordinary command-not-found failures' do

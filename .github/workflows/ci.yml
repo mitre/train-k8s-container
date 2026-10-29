@@ -154,7 +154,7 @@ jobs:
       - name: Test missing targets
         run: |
           targets=('missing-pod/test-ubuntu' 'test-ubuntu/missing-container')
-          errors=('pods "missing-pod" not found' 'Container missing-container not found in pod test-ubuntu.')
+          errors=('pods "missing-pod" not found' 'container missing-container is not valid for pod test-ubuntu')
           for i in "${!targets[@]}"; do
             echo "Missing target ${targets[$i]}: expect Train::TransportError and exit 1, without platform fallback."
             output="${RUNNER_TEMP}/missing-target-${i}"
