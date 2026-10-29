@@ -23,13 +23,13 @@ module TrainPlugins
         # Train raises PlatformDetectionFailed if it can't detect the platform
         begin
           @platform = Train::Platforms::Detect.scan(self)
-        rescue Train::PlatformDetectionFailed, ShellNotAvailableError
-          # Fall back to unknown platform for distroless/minimal containers
-          @platform = nil
+        rescue Train::PlatformDetectionFailed
+          Kernel.warn("WARNING: OS detection failed for #{kubectl_client.unique_identifier}; using unknown platform.")
+        rescue ShellNotAvailableError
+          Kernel.warn("WARNING: No supported shell in #{kubectl_client.unique_identifier} (possibly distroless); using unknown platform.")
         end
 
-        # If detection fails, fall back to a generic unix platform
-        # This handles distroless containers where OS detection may fail
+        # Preserve any detected OS families when falling back to unknown.
         @platform ||= fallback_platform
 
         # Add kubernetes and container families so users can check:
