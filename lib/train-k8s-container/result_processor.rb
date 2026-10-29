@@ -47,9 +47,15 @@ module TrainPlugins
         end
 
         # Check for connection-related errors in stderr
-        if CONNECTION_ERROR_PATTERNS.any? { |pattern| result.stderr.include?(pattern) }
-          logger.warn("Connection error: #{result.stderr}")
-          raise RetryHandler::ConnectionError, result.stderr
+        missing_container = result.stderr.match(/\Aerror: container (?<container>\S+) is not valid for pod (?<pod>\S+)/)
+        if missing_container || CONNECTION_ERROR_PATTERNS.any? { |pattern| result.stderr.include?(pattern) }
+          message = if missing_container
+                      "Container #{missing_container[:container]} not found in pod #{missing_container[:pod]}."
+                    else
+                      result.stderr
+                    end
+          logger.warn("Connection error: #{message}")
+          raise RetryHandler::ConnectionError, message
         end
 
         result
