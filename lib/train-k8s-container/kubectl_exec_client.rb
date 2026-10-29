@@ -98,7 +98,7 @@ module TrainPlugins
         session = create_pty_session(shell, opts)
         session.execute(command)
       rescue PtySession::PtyError, ShellNotAvailableError => e
-        @logger.error("PTY execution failed: #{e.message}, falling back to one-off execution")
+        @logger.debug("Using individual kubectl exec commands for #{unique_identifier}; persistent shell (PTY) session unavailable (#{e.message}).")
         @pty_fallback_disabled = true
         execute_via_shellout(command, opts)
       end

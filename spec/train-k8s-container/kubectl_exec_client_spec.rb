@@ -262,7 +262,7 @@ RSpec.describe TrainPlugins::K8sContainer::KubectlExecClient do
       it 'disables PTY after persistent errors' do
         skip 'Running on Windows' if RUBY_PLATFORM.match?(/windows|mswin|msys|mingw|cygwin/)
 
-        # Mock logger to suppress ERROR output during test
+        # Mock logger to capture fallback messages
         mock_logger = instance_double(Logger)
         allow(mock_logger).to receive(:debug)
         allow(mock_logger).to receive(:warn)
@@ -290,8 +290,10 @@ RSpec.describe TrainPlugins::K8sContainer::KubectlExecClient do
         result = client_pty.execute('test')
         expect(result.stdout).to eq('output')
 
-        # Verify error was logged (but not output to console)
-        expect(mock_logger).to have_received(:error).with(/PTY execution failed/)
+        # Verify the recovered fallback is logged at debug level
+        expect(mock_logger).to have_received(:debug)
+          .with('Using individual kubectl exec commands for default/test/test; persistent shell (PTY) session unavailable (PTY failed).')
+        expect(mock_logger).not_to have_received(:error)
 
         # Verify PTY fallback is now disabled
         expect(client_pty.instance_variable_get(:@pty_fallback_disabled)).to be true
