@@ -99,6 +99,23 @@ RSpec.describe TrainPlugins::K8sContainer::ResultProcessor do
       end.to raise_error(TrainPlugins::K8sContainer::RetryHandler::ConnectionError)
     end
 
+    it 'detects a missing container and preserves kubectl stderr' do
+      result = double('result',
+                      exit_status: 1,
+                      stdout: '',
+                      stderr: 'error: container missing is not valid for pod test-pod out of: app, setup (init)')
+
+      expect do
+        described_class.validate(result, 'whoami', logger)
+      end.to raise_error(TrainPlugins::K8sContainer::RetryHandler::ConnectionError, result.stderr)
+    end
+
+    it 'preserves ordinary command-not-found failures' do
+      result = double('result', exit_status: 127, stdout: '', stderr: '/bin/sh: missing-command: not found')
+
+      expect(described_class.validate(result, 'missing-command', logger)).to eq(result)
+    end
+
     it 'detects error dialing backend' do
       result = double('result',
                       exit_status: 1,

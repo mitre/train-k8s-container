@@ -16,6 +16,7 @@ module TrainPlugins
         'pods "',           # "pods \"name\" not found" - kubectl can't find pod
         'namespaces "',     # "namespaces \"name\" not found" - kubectl can't find namespace
         'Error from server', # kubectl API errors
+        'is not valid for pod', # kubectl can't find the container in the pod
       ].freeze
 
       # Commands that don't produce output (used for silent failure detection)

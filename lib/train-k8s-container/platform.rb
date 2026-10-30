@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative 'errors'
+
 module TrainPlugins
   module K8sContainer
     # Platform detection module for k8s-container transport
@@ -22,12 +24,12 @@ module TrainPlugins
         begin
           @platform = Train::Platforms::Detect.scan(self)
         rescue Train::PlatformDetectionFailed
-          # Fall back to unknown platform for distroless/minimal containers
-          @platform = nil
+          Kernel.warn("WARNING: OS detection failed for #{kubectl_client.unique_identifier}; using unknown platform.")
+        rescue ShellNotAvailableError
+          Kernel.warn("WARNING: No supported shell in #{kubectl_client.unique_identifier} (possibly distroless); using unknown platform.")
         end
 
-        # If detection fails, fall back to a generic unix platform
-        # This handles distroless containers where OS detection may fail
+        # Preserve any detected OS families when falling back to unknown.
         @platform ||= fallback_platform
 
         # Add kubernetes and container families so users can check:
