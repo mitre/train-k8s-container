@@ -224,10 +224,6 @@ See [SECURITY.md](SECURITY.md) for security policy and reporting vulnerabilities
 - Report vulnerabilities to [saf-security@mitre.org](mailto:saf-security@mitre.org)
 - Do NOT open public issues for security vulnerabilities
 
-## License
-
-Licensed under Apache-2.0. See [LICENSE.md](LICENSE.md) and [NOTICE.md](NOTICE.md).
-
 ## Maintainers
 
 This project is maintained by the MITRE SAF (Security Automation Framework) team.
@@ -243,9 +239,3 @@ This project is a fork of [inspec/train-k8s-container](https://github.com/inspec
 - Detect+Context platform detection pattern
 - Comprehensive CI/CD with pod-to-pod testing
 - Automated releases via release-please
-
----
-
-NOTICE: This software was produced for the U.S. Government under Contract Number HHSM-500-2012-00008I, and is subject to Federal Acquisition Regulation Clause 52.227-14, Rights in Data-General.
-
-(c) 2025 The MITRE Corporation.
