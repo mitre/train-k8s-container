@@ -100,6 +100,22 @@ RSpec.describe TrainPlugins::K8sContainer::PtySession do
     end
   end
 
+  describe '#execute' do
+    it 'runs multiline commands ending in whitespace' do
+      allow(PTY).to receive(:spawn).and_wrap_original do |spawn, _command|
+        spawn.call('/bin/bash /dev/stdin')
+      end
+
+      session.connect
+      result = session.execute("for item in one; do\n  echo \"$item\"\ndone\n  ")
+
+      expect(result.stdout).to eq('one')
+      expect(result.exit_status).to eq(0)
+    ensure
+      session.disconnect
+    end
+  end
+
   describe '#connected?' do
     it 'returns false when reader is nil' do
       expect(session.connected?).to be_falsey
