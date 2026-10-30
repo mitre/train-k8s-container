@@ -6,7 +6,7 @@ require 'train-k8s-container'
 
 RSpec.describe 'End-to-End Integration', type: :integration do
   before(:all) do
-    skip_if_no_integration_env
+    require_integration_env!
   end
 
   before(:each) do

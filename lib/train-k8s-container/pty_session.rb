@@ -77,7 +77,8 @@ module TrainPlugins
         # Send command with unique exit code marker (prevents collision with user output)
         # Note: Don't use 2>&1 - PTY already merges streams, and explicit redirect
         # causes stderr content (like SELinux errors) to corrupt structured output
-        cmd_with_marker = "#{command}; echo #{exit_marker}=$?"
+        # Keep the semicolon on the command's last line, avoiding a shell syntax error.
+        cmd_with_marker = "#{command.rstrip}; echo #{exit_marker}=$?"
         @writer.puts(cmd_with_marker)
         @writer.flush
 

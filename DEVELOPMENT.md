@@ -4,7 +4,7 @@ This guide covers local development and testing for train-k8s-container.
 
 ## Prerequisites
 
-- Ruby 3.1+ (3.3 recommended)
+- Ruby 3.3+
 - Bundler
 - Docker (for integration testing)
 - [kind](https://kind.sigs.k8s.io/) (Kubernetes IN Docker)
@@ -21,7 +21,7 @@ cd train-k8s-container
 bundle install
 
 # Run unit tests (no Kubernetes required)
-bundle exec rspec spec/train-k8s-container
+bundle exec rspec
 
 # Run linting
 bundle exec rake style
@@ -53,11 +53,11 @@ train-k8s-container/
 
 ### Unit Tests
 
-Unit tests mock all external dependencies and run quickly:
+The default RSpec command excludes integration tests. Unit tests mock external dependencies:
 
 ```bash
 # Run all unit tests
-bundle exec rspec spec/train-k8s-container
+bundle exec rspec
 
 # Run specific test file
 bundle exec rspec spec/train-k8s-container/connection_spec.rb
@@ -71,14 +71,14 @@ bundle exec rspec --format documentation
 
 ### Integration Tests
 
-Integration tests require a real Kubernetes cluster:
+Integration tests require kubectl and ready `test-ubuntu` and `test-alpine` pods; missing prerequisites fail the suite:
 
 ```bash
 # Setup kind cluster with test pods
 ./test/setup-kind.sh
 
 # Run integration tests
-bundle exec rspec spec/integration
+bundle exec rspec spec/integration --tag type:integration
 
 # Cleanup when done
 ./test/cleanup-kind.sh
@@ -87,8 +87,9 @@ bundle exec rspec spec/integration
 ### Full Test Suite
 
 ```bash
-# Run all tests (unit + integration)
+# Run unit and integration suites
 bundle exec rspec
+bundle exec rspec spec/integration --tag type:integration
 
 # With coverage report
 bundle exec rspec
@@ -166,13 +167,6 @@ cinc-auditor shell -t k8s-container:///test-ubuntu/test-ubuntu
 
 # Run a profile
 cinc-auditor exec my-profile -t k8s-container:///test-ubuntu/test-ubuntu
-```
-
-### Using test_live.rb
-
-```bash
-# Requires kind cluster with test pods
-bundle exec ruby test/scripts/test_live.rb
 ```
 
 ## Code Quality
@@ -286,10 +280,10 @@ This allows InSpec resources to work correctly (`os.linux?` = true) while still 
 
 GitHub Actions runs on every push/PR:
 
-- **Unit tests**: Ruby 3.1, 3.2, 3.3
-- **Integration tests**: Kubernetes 1.29, 1.30, 1.31
+- **Unit tests**: Ruby 3.3, 3.4, 4.0
+- **Integration tests**: Ruby 3.3, 3.4, 4.0 against the three newest Kubernetes minor versions published for the latest stable kind release
 - **Security scans**: TruffleHog, bundler-audit, SBOM
-- **Pod-to-pod tests**: InSpec running inside cluster
+- **Pod-to-pod and regression tests**: The newest Kubernetes version selected above; kubectl matches each cluster version
 
 See `.github/workflows/ci.yml` for details.
 

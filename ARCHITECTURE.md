@@ -508,8 +508,8 @@ spec/
 
 | Test Type | Ruby | Kubernetes | Description |
 |-----------|------|------------|-------------|
-| Unit | 3.1, 3.2, 3.3 | N/A | Mocked, fast |
-| Integration | 3.1, 3.2, 3.3 | 1.29, 1.30, 1.31 | Real kind cluster |
+| Unit | 3.3, 3.4, 4.0 | N/A | Mocked, fast |
+| Integration | 3.3, 3.4, 4.0 | 1.29, 1.30, 1.31 | Real kind cluster |
 | Pod-to-Pod | 3.3 | 1.30 | Scanner inside cluster |
 
 ## Key Design Decisions

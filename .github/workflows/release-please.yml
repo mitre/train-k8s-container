@@ -10,7 +10,7 @@ permissions:
   pull-requests: write
 
 jobs:
-  release-please:
+  release_please:
     runs-on: ubuntu-latest
     outputs:
       release_created: ${{ steps.release.outputs.release_created }}
@@ -18,7 +18,7 @@ jobs:
     steps:
       - name: Run release-please
         id: release
-        uses: googleapis/release-please-action@v4
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
         with:
           token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
           config-file: release-please-config.json
@@ -26,9 +26,10 @@ jobs:
 
       - name: Enable auto-merge for release PR
         if: steps.release.outputs.prs_created == 'true'
-        run: |
-          PR_NUMBER=$(echo '${{ steps.release.outputs.pr }}' | jq -r '.number')
-          echo "Enabling auto-merge for PR #${PR_NUMBER}"
-          gh pr merge --auto --merge "${PR_NUMBER}" --repo ${{ github.repository }}
         env:
           GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+          RELEASE_PR: ${{ steps.release.outputs.pr }}
+        run: |
+          PR_NUMBER=$(jq -r '.number' <<< "$RELEASE_PR")
+          echo "Enabling auto-merge for PR #${PR_NUMBER}"
+          gh pr merge --auto --merge "$PR_NUMBER" --repo "$GITHUB_REPOSITORY"

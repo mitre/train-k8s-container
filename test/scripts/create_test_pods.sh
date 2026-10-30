@@ -7,7 +7,7 @@ echo "Creating test pods in default namespace..."
 
 # Ubuntu pod (has bash)
 kubectl run test-ubuntu \
-  --image=ubuntu:22.04 \
+  --image=ubuntu:24.04 \
   --command -- sleep 3600 \
   --restart=Never 2>/dev/null || echo "test-ubuntu already exists"
 
@@ -38,6 +38,3 @@ echo
 echo "To test with InSpec:"
 echo "  inspec detect -t k8s-container:///test-ubuntu/test-ubuntu"
 echo "  inspec shell -t k8s-container:///test-alpine/test-alpine"
-echo
-echo "To test with Ruby:"
-echo "  ruby test/scripts/test_live.rb"

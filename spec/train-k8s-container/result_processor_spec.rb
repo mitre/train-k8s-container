@@ -44,6 +44,20 @@ RSpec.describe TrainPlugins::K8sContainer::ResultProcessor do
   end
 
   describe '.validate' do
+    it 'recognizes kubectl missing-container messages as connection errors' do
+      messages = [
+        'Error from server (BadRequest): container missing is not valid for pod test-pod',
+        'error: container missing is not valid for pod test-pod out of: target',
+        'error: unable to upgrade connection: container app is not valid for pod example',
+      ]
+      messages.each do |message|
+        result = Train::Extras::CommandResult.new('', message, 1)
+        expect do
+          described_class.validate(result, 'whoami', logger)
+        end.to raise_error(TrainPlugins::K8sContainer::RetryHandler::ConnectionError, message)
+      end
+    end
+
     it 'passes valid result' do
       result = double('result',
                       exit_status: 0,

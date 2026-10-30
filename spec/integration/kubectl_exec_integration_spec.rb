@@ -5,7 +5,7 @@ require 'train-k8s-container'
 
 RSpec.describe 'KubectlExecClient Integration', type: :integration do
   before(:all) do
-    skip_if_no_integration_env
+    require_integration_env!
   end
 
   after(:each) do
@@ -125,7 +125,7 @@ RSpec.describe 'KubectlExecClient Integration', type: :integration do
 
       expect do
         bad_client.execute('whoami')
-      end.to raise_error(/not valid|container/)
+      end.to raise_error(Train::TransportError, /nonexistent-container/)
     end
   end
 
