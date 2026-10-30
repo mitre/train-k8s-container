@@ -27,7 +27,6 @@ module TrainPlugins
       # @param command [String] The command that was executed
       # @param logger [Logger] Logger instance for warnings
       # @return [Train::Extras::CommandResult] Processed result
-      # @raise [ContainerNotFoundError] On missing target containers (not retryable)
       # @raise [RetryHandler::NetworkError] On silent failures
       # @raise [RetryHandler::ConnectionError] On connection errors
       def self.process(result, command, logger)
@@ -35,19 +34,13 @@ module TrainPlugins
         sanitize(result)
       end
 
-      # Validate result for missing containers, connection errors, and silent failures
+      # Validate result for connection errors and silent failures
       # @param result [Object] Result with exit_status, stdout, stderr
       # @param command [String] The command that was executed
       # @param logger [Logger] Logger instance
-      # @raise [ContainerNotFoundError] On missing target containers (not retryable)
       # @raise [RetryHandler::NetworkError] On silent failures
       # @raise [RetryHandler::ConnectionError] On connection errors
       def self.validate(result, command, logger)
-        # Detect missing target containers without depending on kubectl's error prefix
-        if !result.exit_status.zero? && result.stderr.match?(/container \S+ is not valid for pod /)
-          raise ContainerNotFoundError, result.stderr
-        end
-
         # Detect silent network failures (kubectl returns exit 0 despite errors)
         if result.exit_status.zero? && result.stdout.empty? && result.stderr.empty? && should_produce_output?(command)
           logger.warn("Silent failure detected for command: #{command}")

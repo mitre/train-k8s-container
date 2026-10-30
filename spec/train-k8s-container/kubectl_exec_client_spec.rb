@@ -84,17 +84,6 @@ RSpec.describe TrainPlugins::K8sContainer::KubectlExecClient do
         expect(result.exit_status).not_to eq(0)
       end
     end
-
-    it 'does not retry a missing container after an upgrade failure' do
-      client = described_class.new(pod:, namespace:, container_name:, use_pty: false, logger: null_logger)
-      allow(client).to receive(:detect_shell).and_return('/bin/sh')
-      allow(client).to receive(:execute_with_shell).and_return(
-        Train::Extras::CommandResult.new('', 'error: unable to upgrade connection: container nginx is not valid for pod shell-demo', 1)
-      )
-
-      expect { client.execute('whoami') }.to raise_error(TrainPlugins::K8sContainer::ContainerNotFoundError)
-      expect(client).to have_received(:execute_with_shell).once
-    end
   end
 
   describe '#execute_raw' do

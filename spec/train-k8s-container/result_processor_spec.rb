@@ -44,7 +44,7 @@ RSpec.describe TrainPlugins::K8sContainer::ResultProcessor do
   end
 
   describe '.validate' do
-    it 'raises ContainerNotFoundError for kubectl missing-container messages' do
+    it 'recognizes kubectl missing-container messages as connection errors' do
       messages = [
         'Error from server (BadRequest): container missing is not valid for pod test-pod',
         'error: container missing is not valid for pod test-pod out of: target',
@@ -54,7 +54,7 @@ RSpec.describe TrainPlugins::K8sContainer::ResultProcessor do
         result = Train::Extras::CommandResult.new('', message, 1)
         expect do
           described_class.validate(result, 'whoami', logger)
-        end.to raise_error(TrainPlugins::K8sContainer::ContainerNotFoundError, message)
+        end.to raise_error(TrainPlugins::K8sContainer::RetryHandler::ConnectionError, message)
       end
     end
 
