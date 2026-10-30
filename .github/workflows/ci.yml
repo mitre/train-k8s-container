@@ -164,15 +164,45 @@ jobs:
 
       - name: Test distroless detection and shell error
         run: |
-          echo "Testing distroless platform detection..."
-          cinc-auditor detect -t k8s-container:///test-distroless/test-distroless
-          echo "Expecting a shell-unavailable error..."
-          exit_code=0
-          output=$(cinc-auditor shell -t k8s-container:///test-distroless/test-distroless \
-            --command "command('true && true').stdout" 2>&1) || exit_code=$?
-          printf '%s\n' "$output"
-          test "$exit_code" -ne 0
-          grep -Fq 'Container has no shell - cannot execute complex command with operators: true && true' <<< "$output"
+          echo "Distroless detect: expect unknown platform, shell warning on stderr, and exit 0."
+          warning='WARNING: No supported shell in default/test-distroless/test-distroless (possibly distroless); using unknown platform.'
+          output="${RUNNER_TEMP}/distroless-detect"
+          status=0
+          cinc-auditor detect -t k8s-container:///test-distroless/test-distroless > "${output}.stdout" 2> "${output}.stderr" || status=$?
+          cat "${output}.stdout" "${output}.stderr"
+          test "$status" -eq 0
+          grep -Eq 'Name:.*unknown' "${output}.stdout"
+          grep -Fxq "$warning" "${output}.stderr"
+
+          echo "Distroless shell: expect shell warning, unsupported command resource, and exit 1."
+          output="${RUNNER_TEMP}/distroless-shell"
+          status=0
+          cinc-auditor shell -t k8s-container:///test-distroless/test-distroless --command "command('whoami').stdout" \
+            > "${output}.stdout" 2> "${output}.stderr" || status=$?
+          cat "${output}.stdout" "${output}.stderr"
+          test "$status" -eq 1
+          grep -Fxq "$warning" "${output}.stderr"
+          grep -Fq 'Unsupported resource/backend combination: command / unknown' "${output}.stderr"
+          echo "Distroless checks passed."
+
+      - name: Test missing targets
+        run: |
+          targets=('missing-pod/test-ubuntu' 'test-ubuntu/missing-container')
+          errors=('pods "missing-pod" not found' 'container missing-container is not valid for pod test-ubuntu')
+          for i in "${!targets[@]}"; do
+            echo "Missing target ${targets[$i]}: expect Train::TransportError and exit 1, without platform fallback."
+            output="${RUNNER_TEMP}/missing-target-${i}"
+            status=0
+            cinc-auditor detect -t "k8s-container:///${targets[$i]}" > "${output}.stdout" 2> "${output}.stderr" || status=$?
+            cat "${output}.stdout" "${output}.stderr"
+            test "$status" -eq 1
+            grep -Fq 'Train::TransportError' "${output}.stderr"
+            grep -Fq "${errors[$i]}" "${output}.stderr"
+            if grep -q '^WARNING:' "${output}.stderr"; then
+              exit 1
+            fi
+          done
+          echo "Missing-target checks passed."
 
       - name: Collect diagnostics on failure
         if: failure()

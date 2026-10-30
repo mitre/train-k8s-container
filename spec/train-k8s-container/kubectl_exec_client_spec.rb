@@ -119,6 +119,80 @@ RSpec.describe TrainPlugins::K8sContainer::KubectlExecClient do
     end
   end
 
+  describe 'execution without a shell' do
+    let(:client) { described_class.new(pod:, namespace:, container_name:, logger: null_logger, use_pty: false) }
+
+    before do
+      allow(client).to receive(:detect_shell).and_return(nil)
+    end
+
+    it 'explains why a shell command cannot run in a shell-less container' do
+      expect { client.execute('cat /etc/os-release | grep ID') }
+        .to raise_error(TrainPlugins::K8sContainer::ShellNotAvailableError) do |error|
+          expect(error.message).to include("container #{namespace}/#{pod}/#{container_name}")
+          expect(error.message).to include('No supported shell found')
+          expect(error.message).to include('Cannot run shell command: cat /etc/os-release | grep ID')
+          expect(error.message).to include('Only direct executable commands can run without a shell')
+        end
+    end
+
+    it 'still runs a direct executable command' do
+      allow(client).to receive(:run_shellout).and_return(Train::Extras::CommandResult.new('root', '', 0))
+
+      expect(client.execute('whoami').stdout).to eq('root')
+      expect(client).to have_received(:run_shellout).with(/-- whoami$/, timeout: 60)
+    end
+  end
+
+  describe '#container_os' do
+    context 'with a Unix shell' do
+      before do
+        mock_unix_container_with_bash(client)
+      end
+
+      it 'detects the OS lazily and caches the result' do
+        expect(client.container_os).to eq(:unix)
+        expect(client.container_os).to eq(:unix)
+        expect(client).to have_received(:execute_raw).with('echo test').once
+      end
+    end
+
+    context 'with a Windows shell' do
+      before do
+        mock_windows_container_with_cmd(client)
+      end
+
+      it 'returns windows' do
+        expect(client.container_os).to eq(:windows)
+      end
+    end
+
+    context 'without a shell' do
+      before do
+        mock_distroless_container(client)
+      end
+
+      it 'reuses OS detection even when the cached shell is nil' do
+        expect(client.send(:detect_shell)).to be_nil
+        expect(client.container_os).to eq(:unix)
+        expect(client.container_os).to eq(:unix)
+        expect(client).to have_received(:execute_raw).with('echo test').once
+      end
+    end
+
+    context 'when OS detection fails' do
+      before do
+        mock_shell_detection_error(client)
+      end
+
+      it 'caches unknown without repeating the probes' do
+        expect(client.container_os).to eq(:unknown)
+        expect(client.container_os).to eq(:unknown)
+        expect(client).to have_received(:execute_raw).with('echo test').once
+      end
+    end
+  end
+
   describe 'PTY mode selection' do
     describe '#pty_available?' do
       it 'returns true on Unix platforms' do
@@ -199,7 +273,7 @@ RSpec.describe TrainPlugins::K8sContainer::KubectlExecClient do
       it 'disables PTY after persistent errors' do
         skip 'Running on Windows' if RUBY_PLATFORM.match?(/windows|mswin|msys|mingw|cygwin/)
 
-        # Mock logger to suppress ERROR output during test
+        # Mock logger to capture fallback messages
         mock_logger = instance_double(Logger)
         allow(mock_logger).to receive(:debug)
         allow(mock_logger).to receive(:warn)
@@ -227,8 +301,10 @@ RSpec.describe TrainPlugins::K8sContainer::KubectlExecClient do
         result = client_pty.execute('test')
         expect(result.stdout).to eq('output')
 
-        # Verify error was logged (but not output to console)
-        expect(mock_logger).to have_received(:error).with(/PTY execution failed/)
+        # Verify the recovered fallback is logged at debug level
+        expect(mock_logger).to have_received(:debug)
+          .with('Using individual kubectl exec commands for default/test/test; persistent shell (PTY) session unavailable (PTY failed).')
+        expect(mock_logger).not_to have_received(:error)
 
         # Verify PTY fallback is now disabled
         expect(client_pty.instance_variable_get(:@pty_fallback_disabled)).to be true

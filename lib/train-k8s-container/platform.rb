@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative 'shell_detector'
+require_relative 'errors'
 
 module TrainPlugins
   module K8sContainer
@@ -24,12 +24,12 @@ module TrainPlugins
         begin
           @platform = Train::Platforms::Detect.scan(self)
         rescue Train::PlatformDetectionFailed
-          # Fall back to unknown platform for distroless/minimal containers
-          @platform = nil
+          Kernel.warn("WARNING: OS detection failed for #{kubectl_client.unique_identifier}; using unknown platform.")
+        rescue ShellNotAvailableError
+          Kernel.warn("WARNING: No supported shell in #{kubectl_client.unique_identifier} (possibly distroless); using unknown platform.")
         end
 
-        # If detection fails, fall back to a generic unix platform
-        # This handles distroless containers where OS detection may fail
+        # Preserve any detected OS families when falling back to unknown.
         @platform ||= fallback_platform
 
         # Add kubernetes and container families so users can check:
@@ -62,31 +62,20 @@ module TrainPlugins
 
       # Fallback platform when Train's detection fails (distroless, minimal containers)
       def fallback_platform
-        detect_shell # Trigger shell detection
-        container_os = @shell_detector&.container_os || :unknown
-
         # Create a minimal platform with appropriate families
         plat = Train::Platforms.name('unknown')
 
-        case container_os
-        when :unix
-          plat.in_family('unix')
-          plat.in_family('linux')
-        when :windows
-          plat.in_family('windows')
-        end
+        families = case kubectl_client.container_os
+                   when :unix
+                     %w[unix linux]
+                   when :windows
+                     ['windows']
+                   else
+                     []
+                   end
+        families.each { |family| plat.in_family(family) }
 
         force_platform!('unknown', release: 'unknown')
-      end
-
-      def detect_shell
-        return unless is_a?(Train::Plugins::Transport::BaseConnection)
-
-        client = send(:kubectl_client)
-        @shell_detector ||= ShellDetector.new(client)
-        @shell_detector.detect
-      rescue NoMethodError
-        nil
       end
     end
   end

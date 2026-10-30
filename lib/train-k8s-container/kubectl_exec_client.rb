@@ -71,6 +71,12 @@ module TrainPlugins
         "#{@namespace}/#{@pod}/#{@container_name}"
       end
 
+      # Share cached OS detection with platform and file handling.
+      def container_os
+        detect_shell
+        @shell_detector.container_os
+      end
+
       private
 
       def pty_available?
@@ -92,7 +98,7 @@ module TrainPlugins
         session = create_pty_session(shell, opts)
         session.execute(command)
       rescue PtySession::PtyError, ShellNotAvailableError => e
-        @logger.error("PTY execution failed: #{e.message}, falling back to one-off execution")
+        @logger.debug("Using individual kubectl exec commands for #{unique_identifier}; persistent shell (PTY) session unavailable (#{e.message}).")
         @pty_fallback_disabled = true
         execute_via_shellout(command, opts)
       end
@@ -161,7 +167,8 @@ module TrainPlugins
         # For distroless - can only execute simple binaries
         if command.match?(/[|&;<>()$`\\"]/)
           raise ShellNotAvailableError,
-                "Container has no shell - cannot execute complex command with operators: #{command}"
+                "No supported shell found in container #{unique_identifier}. " \
+                "Cannot run shell command: #{command}. Only direct executable commands can run without a shell."
         end
 
         instruction = @command_builder.direct_binary(command)

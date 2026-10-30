@@ -4,7 +4,7 @@ require_relative '../spec_helper'
 require 'train'
 require 'train-k8s-container/platform'
 require 'train-k8s-container/version'
-require 'train-k8s-container/shell_detector'
+require 'train-k8s-container/kubectl_exec_client'
 
 # Test connection class that includes Platform module with mocked command execution
 # Train's Detect.scan runs commands through run_command which calls run_command_via_connection
@@ -13,12 +13,15 @@ class TestPlatformConnection < Train::Plugins::Transport::BaseConnection
 
   attr_accessor :command_results
 
-  def initialize
+  def initialize(kubectl_client)
     super({})
+    @kubectl_client = kubectl_client
     @command_results = {}
   end
 
   private
+
+  attr_reader :kubectl_client
 
   # This is called by Train's run_command method during platform detection
   # Train's detection runs many commands like 'uname -s', 'test -f /etc/os-release && cat /etc/os-release', etc.
@@ -32,7 +35,11 @@ class TestPlatformConnection < Train::Plugins::Transport::BaseConnection
 end
 
 RSpec.describe TrainPlugins::K8sContainer::Platform do
-  subject { TestPlatformConnection.new }
+  let(:kubectl_client) do
+    instance_double(TrainPlugins::K8sContainer::KubectlExecClient,
+                    container_os: :unknown, unique_identifier: 'default/test-pod/test-container')
+  end
+  subject { TestPlatformConnection.new(kubectl_client) }
 
   # Helper to mock command results for Ubuntu detection
   # Train's detection sequence for Debian/Ubuntu:
@@ -257,12 +264,24 @@ RSpec.describe TrainPlugins::K8sContainer::Platform do
         mock_distroless_detection(subject)
       end
 
-      it 'falls back to unknown platform' do
-        # When Train's Detect.scan fails, we should get a fallback platform
-        platform = subject.platform
-        # The fallback should still be a valid platform object
-        expect(platform).not_to be_nil
+      it 'warns on stderr and falls back to unknown platform' do
+        warning = 'WARNING: OS detection failed for default/test-pod/test-container; using unknown platform.'
+        platform = nil
+
+        expect do
+          platform = subject.platform
+        end.to output("#{warning}\n").to_stderr.and output('').to_stdout
+
         expect(platform.name).to eq('unknown')
+      end
+
+      it 'caches the fallback platform without repeating its warning' do
+        cached_platform = nil
+        expect { cached_platform = subject.platform }.to output.to_stderr
+
+        expect do
+          expect(subject.platform).to equal(cached_platform)
+        end.to output('').to_stderr.and output('').to_stdout
       end
 
       it 'still adds kubernetes family to fallback platform' do
@@ -273,6 +292,27 @@ RSpec.describe TrainPlugins::K8sContainer::Platform do
       it 'still adds container family to fallback platform' do
         platform = subject.platform
         expect(platform.family_hierarchy).to include('container')
+      end
+
+      it 'warns on stderr and falls back when a detection probe requires a missing shell' do
+        allow(subject).to receive(:run_command_via_connection)
+          .and_raise(TrainPlugins::K8sContainer::ShellNotAvailableError, 'No supported shell found')
+
+        warning = 'WARNING: No supported shell in default/test-pod/test-container (possibly distroless); using unknown platform.'
+        platform = nil
+
+        expect do
+          platform = subject.platform
+        end.to output("#{warning}\n").to_stderr.and output('').to_stdout
+
+        expect(platform.name).to eq('unknown')
+      end
+
+      it 'preserves connection errors during detection' do
+        allow(subject).to receive(:run_command_via_connection)
+          .and_raise(Train::TransportError, 'pod not found')
+
+        expect { subject.platform }.to raise_error(Train::TransportError, 'pod not found')
       end
     end
   end
